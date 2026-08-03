@@ -51,7 +51,12 @@ export default function Race() {
 function LiveRace({ raceId, onLeave }) {
   const [countdown, setCountdown] = useState(5)
   const [isStarted, setIsStarted] = useState(false)
-  const [progress, setProgress] = useState(0)
+  
+  // Real Typing State
+  const [passage, setPassage] = useState("the secret of getting ahead is getting started")
+  const [input, setInput] = useState("")
+  const [startTime, setStartTime] = useState(null)
+  
   const currentUserId = mockUsers[1].id
 
   useEffect(() => {
@@ -60,21 +65,47 @@ function LiveRace({ raceId, onLeave }) {
       return () => clearTimeout(timer)
     } else {
       setIsStarted(true)
+      setStartTime(Date.now())
     }
   }, [countdown])
 
-  // Mock progress increment for the user
-  useEffect(() => {
-    if (isStarted && progress < 100) {
-      const timer = setTimeout(() => setProgress(p => Math.min(p + Math.random() * 5, 100)), 500)
-      return () => clearTimeout(timer)
+  const handleInput = (e) => {
+    if (!isStarted) return
+    const val = e.target.value
+    if (val.length <= passage.length) {
+      setInput(val)
     }
-  }, [isStarted, progress])
+  }
+
+  // Calculate my real stats
+  let correctChars = 0
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === passage[i]) correctChars++
+  }
+  
+  const myProgress = (correctChars / passage.length) * 100
+  const elapsedMinutes = startTime ? (Date.now() - startTime) / 60000 : 1/60
+  const myWpm = Math.round((correctChars / 5) / (elapsedMinutes || 1/60)) || 0
+  const myAcc = input.length > 0 ? Math.round((correctChars / input.length) * 100) : 100
+
+  // Mock opponents progressing
+  const [op1Progress, setOp1Progress] = useState(0)
+  const [op2Progress, setOp2Progress] = useState(0)
+
+  useEffect(() => {
+    if (isStarted) {
+      const timer = setInterval(() => {
+        setOp1Progress(p => Math.min(p + (Math.random() * 2), 100))
+        setOp2Progress(p => Math.min(p + (Math.random() * 1.5), 100))
+      }, 500)
+      return () => clearInterval(timer)
+    }
+  }, [isStarted])
 
   const players = [
-    { ...mockUsers[0], progress: isStarted ? Math.min(progress + 15, 100) : 0, wpm: 120 },
-    { ...mockUsers[1], progress: isStarted ? progress : 0, wpm: 105 }, // Current user
-    { ...mockUsers[2], progress: isStarted ? Math.max(progress - 10, 0) : 0, wpm: 90 },
+    { ...mockUsers[0], progress: isStarted ? op1Progress : 0, wpm: 120 },
+    { ...mockUsers[1], progress: isStarted ? myProgress : 0, wpm: myWpm, accuracy: myAcc },
+    { ...mockUsers[2], progress: isStarted ? op2Progress : 0, wpm: 90 },
   ]
 
   return (
@@ -92,8 +123,14 @@ function LiveRace({ raceId, onLeave }) {
       )}
 
       {isStarted && (
-        <div className="w-full h-full pb-8">
-           <RaceGame players={players} currentUserId={currentUserId} />
+        <div className="w-full h-full pb-8 relative group">
+           <RaceGame 
+              players={players} 
+              currentUserId={currentUserId} 
+              passage={passage}
+              input={input}
+              handleInput={handleInput}
+           />
         </div>
       )}
     </div>

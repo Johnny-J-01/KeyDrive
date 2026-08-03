@@ -38,9 +38,10 @@ function TopDownCar({ color = 'blue', isMe = false, username = '' }) {
   )
 }
 
-export default function RaceGame({ players, currentUserId }) {
+export default function RaceGame({ players, currentUserId, passage, input, handleInput }) {
   const [roadOffset, setRoadOffset] = useState(0)
   const requestRef = useRef()
+  const inputRef = useRef(null)
   
   // Find current player
   const me = players.find(p => p.id === currentUserId) || players[0]
@@ -48,8 +49,7 @@ export default function RaceGame({ players, currentUserId }) {
   // Animation loop for the scrolling road
   const animate = time => {
     // Scroll road based on 'my' progress. 
-    // In a real app, this would be derived from actual WPM / elapsed time.
-    const speed = me.progress > 0 && me.progress < 100 ? (me.wpm / 10) : 2 // Default slow speed or based on typing
+    const speed = me.progress > 0 && me.progress < 100 ? (me.wpm / 10) : 2
     
     setRoadOffset(prev => (prev + speed) % 1000)
     requestRef.current = requestAnimationFrame(animate)
@@ -58,37 +58,39 @@ export default function RaceGame({ players, currentUserId }) {
   useEffect(() => {
     requestRef.current = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(requestRef.current)
-  }, [me.progress])
+  }, [me.progress, me.wpm])
 
   return (
-    <div className="relative w-full h-[600px] bg-green-900 rounded-2xl overflow-hidden shadow-2xl border border-borderMain select-none">
+    <div 
+      className="relative w-full h-[600px] bg-green-900 rounded-2xl overflow-hidden shadow-2xl border border-borderMain select-none"
+      onClick={() => inputRef.current?.focus()}
+    >
       
+      {/* Side grass/trees using realistic image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center opacity-80" 
+        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1579781354187-5755adcd250c?auto=format&fit=crop&q=80&w=1000)' }} 
+      />
+
       {/* The Scrolling Road */}
       <div 
-        className="absolute inset-0 left-1/2 -translate-x-1/2 w-[60%] md:w-[40%] bg-gray-800"
+        className="absolute inset-0 left-1/2 -translate-x-1/2 w-[60%] md:w-[40%] bg-gray-800 shadow-2xl"
         style={{
           backgroundImage: 'linear-gradient(to bottom, transparent 50%, rgba(255,255,255,0.4) 50%)',
           backgroundSize: '20px 100px',
           backgroundPosition: `center ${roadOffset}px`,
-          borderLeft: '4px solid #fff',
-          borderRight: '4px solid #fff'
+          borderLeft: '6px solid #e2e8f0',
+          borderRight: '6px solid #e2e8f0'
         }}
       />
-      
-      {/* Side grass/trees (Static for simplicity, road moves) */}
-      <div className="absolute top-0 bottom-0 left-0 w-[20%] md:w-[30%] opacity-20" style={{ backgroundImage: 'radial-gradient(circle at center, #166534 2px, transparent 2px)', backgroundSize: '40px 40px' }} />
-      <div className="absolute top-0 bottom-0 right-0 w-[20%] md:w-[30%] opacity-20" style={{ backgroundImage: 'radial-gradient(circle at center, #166534 2px, transparent 2px)', backgroundSize: '40px 40px' }} />
 
       {/* Cars Container - Relative positioning based on 'me' */}
-      <div className="absolute inset-0 flex items-end justify-center pb-32">
+      <div className="absolute inset-0 flex items-end justify-center pb-32 z-10">
         {players.map((player, idx) => {
           const isMe = player.id === currentUserId
-          // Calculate relative position to 'me'
-          // If player is 10% ahead, they are higher up on the screen.
           const relativeProgress = player.progress - me.progress
-          const translateY = -relativeProgress * 10 // Multiply to scale visually
+          const translateY = -relativeProgress * 10
           
-          // Spread cars horizontally
           const numLanes = players.length
           const laneWidth = 80
           const totalWidth = numLanes * laneWidth
@@ -101,7 +103,7 @@ export default function RaceGame({ players, currentUserId }) {
               className="absolute transition-transform duration-500 ease-out"
               style={{
                 transform: `translate(${translateX}px, ${translateY}px)`,
-                zIndex: isMe ? 50 : 10
+                zIndex: isMe ? 20 : 10
               }}
             >
               <TopDownCar color={isMe ? 'blue' : 'red'} isMe={isMe} username={player.username} />
@@ -111,10 +113,9 @@ export default function RaceGame({ players, currentUserId }) {
       </div>
 
       {/* HUD: Left - Player List */}
-      <div className="absolute top-6 left-6 bg-surface/90 backdrop-blur-md border border-borderMain p-4 rounded-xl shadow-lg w-48">
+      <div className="absolute top-6 left-6 bg-surface/90 backdrop-blur-md border border-borderMain p-4 rounded-xl shadow-lg w-48 z-50">
         <h3 className="text-xs font-bold text-textMuted uppercase tracking-wider mb-4">Players</h3>
         <div className="flex flex-col gap-3">
-          {/* Sorted by progress */}
           {[...players].sort((a, b) => b.progress - a.progress).map((p, idx) => (
             <div key={p.id} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
@@ -127,7 +128,7 @@ export default function RaceGame({ players, currentUserId }) {
       </div>
 
       {/* HUD: Right - Stats */}
-      <div className="absolute top-6 right-6 flex flex-col gap-4">
+      <div className="absolute top-6 right-6 flex flex-col gap-4 z-50">
         <div className="bg-surface/90 backdrop-blur-md border border-borderMain p-4 rounded-xl shadow-lg flex flex-col items-center justify-center w-24">
           <span className="text-xs font-bold text-textMuted uppercase">WPM</span>
           <span className="text-3xl font-bold font-mono text-white">{me.wpm || 0}</span>
@@ -138,20 +139,41 @@ export default function RaceGame({ players, currentUserId }) {
         </div>
       </div>
 
-      {/* HUD: Bottom Center - Typing Area (Mocked for Race Component) */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-surface/95 backdrop-blur-xl border border-borderMain p-6 rounded-2xl shadow-2xl">
-        <div className="text-xl font-mono text-textMuted leading-relaxed mb-4">
-          <span className="text-success">believe you can and you </span>
-          <span className="text-white border-b-2 border-primary">are</span> halfway there
+      {/* HUD: Bottom Center - Typing Area */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-surface/95 backdrop-blur-xl border border-borderMain p-6 rounded-2xl shadow-2xl z-50">
+        <div className="text-2xl font-mono text-textMuted leading-loose relative z-10 break-words">
+          {passage.split('').map((char, i) => {
+            let color = ''
+            if (i < input.length) {
+              color = input[i] === char ? 'text-white' : 'text-error bg-error/20'
+            }
+            const isCurrent = i === input.length
+            return (
+              <span key={i} className={clsx(color, isCurrent && 'border-b-2 border-primary animate-pulse')}>
+                {char}
+              </span>
+            )
+          })}
         </div>
-        <div className="flex items-center justify-between mt-4 border-t border-borderMain/50 pt-4">
+        
+        <input
+          ref={inputRef}
+          type="text"
+          className="absolute opacity-0 -z-10"
+          value={input}
+          onChange={handleInput}
+          onBlur={() => inputRef.current?.focus()}
+          autoFocus
+        />
+
+        <div className="flex items-center justify-between mt-6 border-t border-borderMain/50 pt-4">
            <div className="flex items-center gap-2">
              <Activity className="w-4 h-4 text-primary" />
-             <span className="text-sm font-bold text-textMuted">STREAK x15</span>
+             <span className="text-sm font-bold text-textMuted">STREAK x{(input.length / 5).toFixed(0)}</span>
            </div>
            <div className="flex gap-1">
              {[...Array(8)].map((_, i) => (
-               <div key={i} className="h-2 w-6 bg-success rounded-sm skew-x-[-20deg]"></div>
+               <div key={i} className={clsx("h-2 w-6 rounded-sm skew-x-[-20deg]", i < (input.length / 10) ? 'bg-success' : 'bg-surface')} />
              ))}
            </div>
         </div>
