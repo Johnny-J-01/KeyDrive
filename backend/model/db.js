@@ -4,18 +4,18 @@ import dotenv from 'dotenv';
 
 dotenv.config(); 
 
-const Pool = new Pool({
+const pool = new Pool({
     host: "localhost",
-    connectionString: process.env.DATABASE_URL,
+    // connectionString: process.env.DATABASE_URL,
     port: 5432,
     user: "postgres",
     password: process.env.DB_PASSWORD,
-    database: "KeyDrive",
+    database: "keydrive",
 })
 
 const client = await pool.connect(); 
 console.log("Connected to Postgres");
 client.release(); 
 
-export default Pool; 
+export default pool; 
 
