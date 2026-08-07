@@ -8,7 +8,7 @@ export const emailVerificationController = async (request, response) => {
     try {
         const { token } = request.params; 
         const decoded = jwt.verify(token, process.env.JWT_SECRET); 
-        console.log("decoded: ", decoded);
+        // console.log("decoded: ", decoded);
         const user = await pool.query(
             `
                 SELECT * 
@@ -23,7 +23,7 @@ export const emailVerificationController = async (request, response) => {
             })
         }
 
-        console.log("USER AFTER RETURING: ", user.rows[0]);
+        // console.log("USER AFTER RETURING: ", user.rows[0]);
         if (user.rows[0].isverified == true) {
             return response.status(400).json({
                 message: "Email already Verified", 
@@ -42,7 +42,7 @@ export const emailVerificationController = async (request, response) => {
             `, [decoded.userId]
         )
 
-        console.log("veid: ", verifiedUser); 
+        // console.log("veid: ", verifiedUser); 
         response.status(200).json({
             message: "Registration successfull. Please check your email"
         })

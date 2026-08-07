@@ -9,7 +9,7 @@ import {
 const router = express.Router(); 
 
 router.post('/userAuthRegister', userAuthRegisterController); 
-router.get('/userAuthLogin', userAuthLoginController); 
+router.post('/userAuthLogin', userAuthLoginController); 
 router.get('/userAuthLogout', userAuthLogoutController); 
 router.get('/userAuthDelete', userAuthDeleteController); 
 

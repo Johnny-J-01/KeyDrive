@@ -1,6 +1,7 @@
 import express from 'express';
 import {
-    userRegisterSchema
+    userRegisterSchema, 
+    userLoginSchema
 } from '../validation/userAuth.validation.js';
 import bcrypt from 'bcrypt';
 import pool from '../model/db.js';
@@ -9,6 +10,7 @@ import jwt from 'jsonwebtoken';
 import { generateVerificationToken } from '../utils/JWTtoken.utils.js';
 import { verifyTemplate } from '../templates/verify.template.js';
 import { sendEmail } from '../services/mail.services.js';
+
 
 dotenv.config();
 
@@ -34,9 +36,9 @@ export const userAuthRegisterController = async (request, response) => {
 
         const userId = result.rows[0].id;
         const verificationToken = generateVerificationToken(userId);
-        console.log(verificationToken);
+        // console.log(verificationToken);
         const verificationLink = `http://localhost:5173/verify-email?token=${verificationToken}`;
-        console.log("verificationLink: ", verificationLink);
+        // console.log("verificationLink: ", verificationLink);
         try {
             await sendEmail({
                 to: validationResult.data.userEmail,
@@ -54,14 +56,59 @@ export const userAuthRegisterController = async (request, response) => {
     }
 
     catch (error) {
-        response.json({
+        response.status(400).json({
             error: error
         })
     }
 }
 
-export const userAuthLoginController = (request, response) => {
+export const userAuthLoginController = async (request, response) => {
+    try {
+        const data = request.body; 
+        const validationResult = userLoginSchema.safeParse(data);
+        if (!validationResult.success) {
+            return response.status(400).json({
+                success: false,
+                message: validationResult.error.issues
+            })
+        }
 
+        const { userEmail, userPassword } = data; 
+
+        if (!userEmail || !userPassword) {
+            response.status(400).json({
+                message: "Entered Email doesn't exists"
+            })
+        }
+
+        const dataBaseStoredUserData = await pool.query(
+            `
+                SELECT * 
+                FROM users
+                WHERE email = $1; 
+            `, [userEmail]
+        ); 
+        
+        const isPasswordMatch = await bcrypt.compare(userPassword, dataBaseStoredUserData.rows[0].password_hash)
+
+        if (!isPasswordMatch) {
+            return response.status(400).json({
+                error: `Incorrect Password`
+            });
+        }
+        const token = generateVerificationToken(dataBaseStoredUserData.rows[0].id);  
+        response.cookie("token", token, {
+            httpOnly: true,
+            maxAge: 1000000 * 60 * 60 * 24,
+            signed: true,
+        });
+        response.status(200).json({ message: `redirecting to user ${userEmail}'s dashboard`});
+    }
+    catch (error) {
+        response.status(400).json({
+            error: error
+        })
+    }
 }
 
 export const userAuthLogoutController = (request, response) => {

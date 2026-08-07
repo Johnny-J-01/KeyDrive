@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors'; 
 import AuthRouter from '../backend/routes/userAuth.routes.js';
 import emailRouter from '../backend/routes/EmailVerification.routes.js'; 
+import cookieParser from 'cookie-parser';
 
 dotenv.config(); 
 
@@ -27,6 +28,7 @@ app.use(cors({
     ], 
     credentials: true
 })); 
+app.use(cookieParser(process.env.COOKIE_PW));
 app.use('/', AuthRouter);
 app.use('/', emailRouter); 
 
