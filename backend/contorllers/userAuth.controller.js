@@ -115,7 +115,6 @@ export const userAuthLogoutController = (request, response) => {
 
 }
 
-
 export const userAuthDeleteController = (request, response) => {
 
 }
