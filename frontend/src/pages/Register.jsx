@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Keyboard } from "lucide-react";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 
 export default function Register() {
 	const [userFormData, setUserFormData] = React.useState({
@@ -35,7 +35,6 @@ export default function Register() {
 			toast.error(data.message || "Registration failed");
 			return;
 		}
-		console.log(data);
 		toast.success(
 			"Registration successful! Please check your email to verify your account.",
 		);
