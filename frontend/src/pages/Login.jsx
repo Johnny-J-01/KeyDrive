@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Keyboard } from "lucide-react";
 import React from "react";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ export default function Login() {
 		userEmail: "",
 		userPassword: "",
 	});
+	const navigate = useNavigate();
 
 	const handleFormOnChange = (event) => {
 		const { name, value } = event.target;
@@ -33,6 +34,7 @@ export default function Login() {
 		const data = await response.json();
 		console.log(data);
 		toast.success("Successfully Logged in!");
+		navigate("/practice");
 	};
 
 	return (
