@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv'; 
 import cors from 'cors'; 
 import AuthRouter from '../backend/routes/userAuth.routes.js';
+import emailRouter from '../backend/routes/EmailVerification.routes.js'; 
 
 dotenv.config(); 
 
@@ -27,6 +28,7 @@ app.use(cors({
     credentials: true
 })); 
 app.use('/', AuthRouter);
+app.use('/', emailRouter); 
 
 app.listen(PORT, () => {
     console.log(`port started at ${PORT}`);

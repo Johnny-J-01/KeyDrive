@@ -49,7 +49,7 @@ const VerifyEmail = () => {
 							</div>
 						</div>
 
-						<h1 className="text-5xl font-bold text-white font-[Patrick_Hand] text-center">
+						<h1 className="text-5xl font-bold text-white text-center">
 							Verifying
 						</h1>
 
@@ -68,7 +68,7 @@ const VerifyEmail = () => {
 							</div>
 						</div>
 
-						<h1 className="text-5xl font-bold text-white font-[Patrick_Hand] text-center">
+						<h1 className="text-5xl font-bold text-white text-center">
 							Verified
 						</h1>
 
@@ -91,7 +91,7 @@ const VerifyEmail = () => {
 							</div>
 						</div>
 
-						<h1 className="text-5xl font-bold text-white font-[Patrick_Hand] text-center">
+						<h1 className="text-5xl font-bold text-white text-center">
 							Oops!
 						</h1>
 
@@ -99,7 +99,7 @@ const VerifyEmail = () => {
 							This verification link is invalid or has expired.
 						</p>
 
-						<button className="mt-10 w-full rounded-xl border border-indigo-500 bg-indigo-600 hover:bg-indigo-700 text-white py-3 text-xl font-bold font-[Patrick_Hand] transition">
+						<button className="mt-10 w-full rounded-xl border border-indigo-500 bg-indigo-600 hover:bg-indigo-700 text-white py-3 text-xl font-bold transition">
 							Back To Login
 						</button>
 					</>
