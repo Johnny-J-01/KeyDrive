@@ -1,5 +1,6 @@
 import jwt, { decode } from "jsonwebtoken";
 import dotenv from 'dotenv'; 
+import pool from "../model/db.js";
 
 dotenv.config(); 
 
@@ -7,7 +8,14 @@ export const emailVerificationController = async (request, response) => {
     try {
         const { token } = request.params; 
         const decoded = jwt.verify(token, process.env.JWT_SECRET); 
-        console.log(decoded);
+        console.log("decoded: ", decoded);
+        const user = await pool.query(
+            `
+                SELECT * 
+                FROM users
+                WHERE id = $1
+            `, [decoded.userId]
+        )
 
         if (!user) {
             return response.status(400).json({
@@ -15,7 +23,7 @@ export const emailVerificationController = async (request, response) => {
             })
         }
 
-        console.log(user);
+        console.log("USER AFTER RETURING: ", user);
         if (user.is_verified) {
             return response.status(400).json({
                 message: "Email already Verified", 

@@ -36,12 +36,13 @@ export const userAuthRegisterController = async (request, response) => {
         const verificationToken = generateVerificationToken(userId);
         console.log(verificationToken);
         const verificationLink = `http://localhost:5173/verify-email?token=${verificationToken}`;
+        console.log("verificationLink: ", verificationLink);
         try {
             await sendEmail({
-                to: data.userEmail,
+                to: validationResult.data.userEmail,
                 subject: "Verify your email",
                 html: verifyTemplate(
-                    data.userName,
+                    validationResult.data.userName,
                     verificationLink
                 ),
             });

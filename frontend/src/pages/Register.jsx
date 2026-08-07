@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Keyboard } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Register() {
 	const [userFormData, setUserFormData] = React.useState({
@@ -19,16 +20,24 @@ export default function Register() {
 
 	const handleFormSubmit = async (event) => {
 		event.preventDefault();
-		const fetchData = await fetch(
-			"http://localhost:3000/userAuthRegister",
-			{
-				method: "POST",
-				headers: {
-					"content-type": "application/json",
-				},
-				body: JSON.stringify(userFormData),
-				credentials: "include",
+		const response = await fetch("http://localhost:3000/userAuthRegister", {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
 			},
+			body: JSON.stringify(userFormData),
+			credentials: "include",
+		});
+
+		const data = await response.json();
+
+		if (!response.ok) {
+			toast.error(data.message || "Registration failed");
+			return;
+		}
+		console.log(data);
+		toast.success(
+			"Registration successful! Please check your email to verify your account.",
 		);
 	};
 
