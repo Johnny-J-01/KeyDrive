@@ -13,7 +13,7 @@ export const emailVerificationController = async (request, response) => {
             `
                 SELECT * 
                 FROM users
-                WHERE id = $1
+                WHERE id = $1; 
             `, [decoded.userId]
         )
 
@@ -23,15 +23,25 @@ export const emailVerificationController = async (request, response) => {
             })
         }
 
-        console.log("USER AFTER RETURING: ", user);
-        if (user.is_verified) {
+        console.log("USER AFTER RETURING: ", user.rows[0]);
+        if (user.rows[0].isverified == true) {
             return response.status(400).json({
                 message: "Email already Verified", 
             }); 
         }
 
         // const verifiedUser = await userModel.findByIdAndUpdate({_id : decoded.userId}, {isVerified: true,}, {returnDocument: "after"}); 
-        const verifiedUser = await updateUserVerification(decoded.userId); 
+        // const verifiedUser = await updateUserVerification(decoded.userId); 
+
+        const verifiedUser = await pool.query(
+            `
+                UPDATE users 
+                SET isverified = True
+                WHERE id = $1
+                RETURNING *; 
+            `, [decoded.userId]
+        )
+
         console.log("veid: ", verifiedUser); 
         response.status(200).json({
             message: "Registration successfull. Please check your email"
