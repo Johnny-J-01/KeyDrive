@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { mockPassages } from "../data/mock";
 
 const TIME_MODES = [15, 30, 60, 120];
-const WORD_MODES = [25, 50, 100];
+const WORD_MODES = [10, 25, 50, 100];
 
 export default function Practice() {
 	const [mode, setMode] = useState("time");
@@ -19,7 +19,7 @@ export default function Practice() {
 	const [stats, setStats] = useState({ wpm: 0, accuracy: 0, errors: 0 });
 
 	const inputRef = useRef(null);
-	let userPersonalData;
+	const [userPersonalData, setUserPersonalData] = useState(null);
 
 	useEffect(() => {
 		const fetchUserData = async () => {
@@ -31,8 +31,7 @@ export default function Practice() {
 				console.log("Unable to fetch");
 			}
 			const data = await response.json();
-			userPersonalData = data.data.rows[0];
-			console.log(userPersonalData);
+			setUserPersonalData(data.data.rows[0]);
 		};
 		fetchUserData();
 	}, []);
@@ -62,7 +61,7 @@ export default function Practice() {
 		// Pick a random passage
 		let text =
 			mockPassages[Math.floor(Math.random() * mockPassages.length)];
-		if (mode === "words") {
+		if (mode === "passage") {
 			text = text.split(" ").slice(0, wordLimit).join(" ");
 		}
 		setPassage(text);
@@ -84,17 +83,18 @@ export default function Practice() {
 			credentials: "include",
 		});
 
-		if (!response) {
-			console.log("SOME FUCKING ERROR");
+		if (!response.ok) {
+			const errorData = await response.json();
+			console.error("STATS API ERROR:", errorData);
 			return;
 		}
 
-		console.log("passed");
-		// const data = await response.json();
-		// console.log("USER TEST CURRENT DATA: ", data);
+		const data = await response.json();
+		console.log("Response user Stat data: ", data);
 	};
 
-	const finishTest = async () => {
+	const finishTest = () => {
+		if (!startTime) return;
 		setIsFinished(true);
 		const elapsed =
 			mode === "time"
@@ -118,15 +118,17 @@ export default function Practice() {
 				: 0;
 
 		const userTestData = {
-			user_id: !userPersonalData ? "0000000000" : userPersonalData.id,
+			user_id: !userPersonalData ? "guest" : userPersonalData.id,
 			mode: mode,
+			word_count: wordLimit,
+			duration_seconds: timeLimit,
 			wpm: wpm,
 			accuracy: accuracy,
 			errors: errors,
+			started_at: new Date(startTime).toISOString(),
 		};
 
 		postUserData(userTestData);
-
 		setStats({ wpm, accuracy, errors, chars: input.length });
 	};
 
@@ -137,7 +139,7 @@ export default function Practice() {
 		const val = e.target.value;
 		if (val.length <= passage.length) {
 			setInput(val);
-			if (mode === "words" && val.length === passage.length) {
+			if (mode === "passage" && val.length === passage.length) {
 				finishTest();
 			}
 		}
@@ -161,15 +163,15 @@ export default function Practice() {
 							<Clock className="w-4 h-4" /> Time
 						</button>
 						<button
-							onClick={() => setMode("words")}
+							onClick={() => setMode("passage")}
 							className={clsx(
 								"flex items-center gap-2 text-sm font-medium transition-colors",
-								mode === "words"
+								mode === "passage"
 									? "text-primary"
 									: "text-textMuted hover:text-white",
 							)}
 						>
-							<Hash className="w-4 h-4" /> Words
+							<Hash className="w-4 h-4" /> passage
 						</button>
 					</div>
 					<div className="flex items-center gap-4">
