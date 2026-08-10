@@ -38,7 +38,7 @@ export default function Login() {
 		console.log(data);
 		login(data.user);
 		toast.success("Successfully Logged in!");
-		navigate("/profile");
+		navigate("/practice");
 	};
 
 	return (

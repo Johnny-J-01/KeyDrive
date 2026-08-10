@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 
 export default function Profile() {
 	const user = mockUsers[0];
-	const [userData, setUserData] = useState(null);
+	const [userPersonalData, setUserPersonalData] = useState(null);
+	const [userStatData, setUserStatData] = useState(null);
 	useEffect(() => {
 		const fetchData = async () => {
 			const response = await fetch("http://localhost:3000/profile", {
@@ -17,8 +18,9 @@ export default function Profile() {
 				console.log("Internal Server Error");
 				return;
 			}
-
-			setUserData(data);
+			console.log("NIGG DATA: ", data);
+			console.log("DATA: ", data.data.rows[0]);
+			setUserPersonalData(data.data.rows[0]);
 		};
 
 		fetchData();
@@ -29,13 +31,15 @@ export default function Profile() {
 			{/* User Header */}
 			<div className="flex flex-col md:flex-row items-center gap-6 p-8 bg-surface border border-borderMain rounded-2xl">
 				<img
-					src={!userData ? "👲" : userData.avatar_url}
+					src={!userPersonalData ? "👲" : userPersonalData.avatar_url}
 					alt="avatar"
 					className="w-24 h-24 rounded-full bg-borderMain p-1"
 				/>
 				<div className="flex-1 text-center md:text-left">
 					<h2 className="text-3xl font-bold text-white mb-2">
-						{!userData ? "johndoe" : userData.userName}
+						{!userPersonalData
+							? "johndoe"
+							: userPersonalData.username}
 					</h2>
 					<p className="text-textMuted flex items-center justify-center md:justify-start gap-2">
 						<Clock className="w-4 h-4" /> Joined August 2026
@@ -51,22 +55,22 @@ export default function Profile() {
 				<StatCard
 					icon={Activity}
 					label="Average WPM"
-					value={!userData ? 145 : userData.wpm}
+					value={!userStatData ? 145 : userStatData.wpm}
 				/>
 				<StatCard
 					icon={Target}
 					label="Accuracy"
-					value={!userData ? 100 : `${userData.accuracy}%`}
+					value={!userStatData ? 100 : `${userStatData.accuracy}%`}
 				/>
 				<StatCard
 					icon={Trophy}
 					label="Races Won"
-					value={!userData ? 100 : userData.racesWon}
+					value={!userStatData ? 100 : userStatData.racesWon}
 				/>
 				<StatCard
 					icon={Flame}
 					label="Current Streak"
-					value={!userData ? "12 Days" : userData.streak}
+					value={!userStatData ? "12 Days" : userStatData.streak}
 				/>
 			</div>
 
@@ -83,12 +87,14 @@ export default function Profile() {
 							</div>
 							<div>
 								<h4 className="font-bold text-white">
-									{!userData ? "JohnDoe" : userData.userName}
+									{!userPersonalData
+										? "JohnDoe"
+										: userPersonalData.usermame}
 								</h4>
 								<p className="text-sm text-textMuted">
-									{!userData
+									{!userStatData
 										? "Reach 140 WPM in a race"
-										: userData.achievements}
+										: userStatData.achievements}
 								</p>
 							</div>
 						</div>
@@ -101,9 +107,9 @@ export default function Profile() {
 									Accuracy Master
 								</h4>
 								<p className="text-sm text-textMuted">
-									{!userData
+									{!userStatData
 										? "Finish 10 races with 100% accuracy"
-										: userData.achievements}
+										: userStatData.achievements}
 								</p>
 							</div>
 						</div>

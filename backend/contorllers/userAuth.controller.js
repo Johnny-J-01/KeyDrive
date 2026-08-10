@@ -98,6 +98,8 @@ export const userAuthLoginController = async (request, response) => {
         }
         const dbUser = dataBaseStoredUserData.rows[0];
         const token = generateVerificationToken(dbUser.id);  
+        console.log(token);
+        // response.cookie(, )
         response.cookie("token", token, {
             httpOnly: true,
             maxAge: 1000000 * 60 * 60 * 24,
