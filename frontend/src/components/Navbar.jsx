@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Keyboard, Trophy, User, Activity } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "../main";
+import { toast } from "sonner";
 
 const navLinks = [
 	{ path: "/practice", label: "Practice", icon: Keyboard },
@@ -14,10 +15,18 @@ export default function Navbar() {
 	const navigate = useNavigate();
 	const { user, logout } = useAuth();
 
-	const handleLogout = async () => {
+	async function handleLogout() {
+		const response = await fetch("http://localhost:3000/userAuthLogout", {
+			method: "POST",
+			credentials: "include",
+		});
+		if (!response.ok) {
+			console.log(`Failed to logout`);
+		}
 		await logout();
-		navigate("/");
-	};
+		toast.success("Logged Out");
+		navigate("/practice");
+	}
 
 	return (
 		<nav className="border-b border-borderMain sticky top-0 bg-background/90 backdrop-blur z-50">

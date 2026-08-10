@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.post('/userAuthRegister', userAuthRegisterController); 
 router.post('/userAuthLogin', userAuthLoginController); 
-router.get('/userAuthLogout', userAuthLogoutController); 
+router.post('/userAuthLogout', userAuthLogoutController); 
 router.get('/userAuthDelete', userAuthDeleteController); 
 
 export default router; 

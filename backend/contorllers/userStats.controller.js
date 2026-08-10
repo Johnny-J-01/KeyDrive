@@ -6,7 +6,6 @@ dotenv.config();
 
 export const userProfileController = async (request, response) => {
     try {
-        // const token = request.headers['authorization']; 
         const userPersonalData = await pool.query(
             `
                 SELECT * 
@@ -17,9 +16,6 @@ export const userProfileController = async (request, response) => {
         response.status(200).json({
             data: userPersonalData 
         })
-        // response.status(200).json({
-        //     data: userPersonalData
-        // })
     } 
     catch (error) {
         response.status(400).json({

@@ -18,8 +18,6 @@ export default function Profile() {
 				console.log("Internal Server Error");
 				return;
 			}
-			console.log("NIGG DATA: ", data);
-			console.log("DATA: ", data.data.rows[0]);
 			setUserPersonalData(data.data.rows[0]);
 		};
 
