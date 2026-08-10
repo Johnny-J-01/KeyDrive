@@ -19,6 +19,23 @@ export default function Practice() {
 	const [stats, setStats] = useState({ wpm: 0, accuracy: 0, errors: 0 });
 
 	const inputRef = useRef(null);
+	let userPersonalData;
+
+	useEffect(() => {
+		const fetchUserData = async () => {
+			const response = await fetch("http://localhost:3000/profile", {
+				method: "GET",
+				credentials: "include",
+			});
+			if (!response) {
+				console.log("Unable to fetch");
+			}
+			const data = await response.json();
+			userPersonalData = data.data.rows[0];
+			console.log(userPersonalData);
+		};
+		fetchUserData();
+	}, []);
 
 	// Initialize test
 	useEffect(() => {
@@ -41,7 +58,7 @@ export default function Practice() {
 		}
 	}, [startTime, isFinished, mode, timeLimit]);
 
-	const resetTest = () => {
+	const resetTest = async () => {
 		// Pick a random passage
 		let text =
 			mockPassages[Math.floor(Math.random() * mockPassages.length)];
@@ -57,7 +74,27 @@ export default function Practice() {
 		if (inputRef.current) inputRef.current.focus();
 	};
 
-	const finishTest = () => {
+	const postUserData = async (userData) => {
+		const response = await fetch("http://localhost:3000/stats", {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+			},
+			body: JSON.stringify(userData),
+			credentials: "include",
+		});
+
+		if (!response) {
+			console.log("SOME FUCKING ERROR");
+			return;
+		}
+
+		console.log("passed");
+		// const data = await response.json();
+		// console.log("USER TEST CURRENT DATA: ", data);
+	};
+
+	const finishTest = async () => {
 		setIsFinished(true);
 		const elapsed =
 			mode === "time"
@@ -79,6 +116,16 @@ export default function Practice() {
 			input.length > 0
 				? Math.round((correctChars / input.length) * 100)
 				: 0;
+
+		const userTestData = {
+			user_id: !userPersonalData ? "0000000000" : userPersonalData.id,
+			mode: mode,
+			wpm: wpm,
+			accuracy: accuracy,
+			errors: errors,
+		};
+
+		postUserData(userTestData);
 
 		setStats({ wpm, accuracy, errors, chars: input.length });
 	};
