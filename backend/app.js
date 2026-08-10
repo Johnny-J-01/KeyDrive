@@ -1,9 +1,11 @@
 import express from 'express'; 
 import dotenv from 'dotenv'; 
 import cors from 'cors'; 
+import cookieParser from 'cookie-parser';
+
 import AuthRouter from '../backend/routes/userAuth.routes.js';
 import emailRouter from '../backend/routes/EmailVerification.routes.js'; 
-import cookieParser from 'cookie-parser';
+import profileRouter from '../backend/routes/userStats.routes.js'; 
 
 dotenv.config(); 
 
@@ -31,6 +33,7 @@ app.use(cors({
 app.use(cookieParser(process.env.COOKIE_PW));
 app.use('/', AuthRouter);
 app.use('/', emailRouter); 
+app.use('/', profileRouter); 
 
 app.listen(PORT, () => {
     console.log(`port started at ${PORT}`);

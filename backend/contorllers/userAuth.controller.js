@@ -96,13 +96,20 @@ export const userAuthLoginController = async (request, response) => {
                 error: `Incorrect Password`
             });
         }
-        const token = generateVerificationToken(dataBaseStoredUserData.rows[0].id);  
+        const dbUser = dataBaseStoredUserData.rows[0];
+        const token = generateVerificationToken(dbUser.id);  
         response.cookie("token", token, {
             httpOnly: true,
             maxAge: 1000000 * 60 * 60 * 24,
             signed: true,
         });
-        response.status(200).json({ message: `redirecting to user ${userEmail}'s dashboard`});
+        response.status(200).json({
+            user: {
+                id: dbUser.id,
+                userName: dbUser.username,
+                userEmail: dbUser.email,
+            },
+        });
     }
     catch (error) {
         response.status(400).json({
@@ -112,7 +119,8 @@ export const userAuthLoginController = async (request, response) => {
 }
 
 export const userAuthLogoutController = (request, response) => {
-
+    response.clearCookie("token");
+    response.status(200).json({ message: "Logged out successfully" });
 }
 
 export const userAuthDeleteController = (request, response) => {

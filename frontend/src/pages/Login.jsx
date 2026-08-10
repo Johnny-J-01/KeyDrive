@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Keyboard } from "lucide-react";
 import React from "react";
 import { toast } from "sonner";
+import { useAuth } from "../main";
 
 export default function Login() {
 	const [userFormData, setUserFormData] = React.useState({
@@ -12,8 +13,10 @@ export default function Login() {
 
 	const handleFormOnChange = (event) => {
 		const { name, value } = event.target;
-		setUserFormData((prev) => ({ ...userFormData, [name]: value }));
+		setUserFormData((prev) => ({ ...prev, [name]: value }));
 	};
+
+	const { login } = useAuth();
 
 	const handleLoginFormSubmit = async (event) => {
 		event.preventDefault();
@@ -33,8 +36,9 @@ export default function Login() {
 
 		const data = await response.json();
 		console.log(data);
+		login(data.user);
 		toast.success("Successfully Logged in!");
-		navigate("/practice");
+		navigate("/profile");
 	};
 
 	return (

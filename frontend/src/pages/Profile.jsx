@@ -18,9 +18,11 @@ export default function Profile() {
 				return;
 			}
 
-			setUserLoginData(data);
+			setUserData(data);
 		};
-	});
+
+		fetchData();
+	}, []);
 
 	return (
 		<div className="max-w-5xl mx-auto py-8 flex flex-col gap-8">
