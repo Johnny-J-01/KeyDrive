@@ -5,10 +5,12 @@ const MAX_WORD_COUNT = 1000;
 
 export const getPracticeWordsController = async (request, response) => {
 	try {
-		const parsedCount = parseInt(request.query.count, 10);
-		const count = Number.isNaN(parsedCount)
-			? 25
-			: Math.min(Math.max(parsedCount, MIN_WORD_COUNT), MAX_WORD_COUNT);
+		// const parsedCount = parseInt(request.query.count, 10);
+		// const count = Number.isNaN(parsedCount)
+		// 	? 25
+		// 	: Math.min(Math.max(parsedCount, MIN_WORD_COUNT), MAX_WORD_COUNT);
+
+		const count = 500; 
 
 		const result = await pool.query(
 			`

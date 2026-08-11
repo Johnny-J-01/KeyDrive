@@ -34,7 +34,13 @@ function App() {
 					<Route path="/dashboard" element={<Profile />} />{" "}
 					{/* Alias for now */}
 				</Routes>
-				<Toaster richColors position="top-right" />
+				<Toaster
+					richColors
+					position="top-right"
+					visibleToasts={100}
+					expand
+					closeButton
+				/>
 			</main>
 		</div>
 	);

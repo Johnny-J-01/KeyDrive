@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import AuthRouter from '../backend/routes/userAuth.routes.js';
 import emailRouter from '../backend/routes/EmailVerification.routes.js'; 
 import profileRouter from '../backend/routes/userStats.routes.js'; 
+import practiceRouter from '../backend/routes/practice.routes.js'; 
 
 dotenv.config(); 
 
@@ -34,6 +35,7 @@ app.use(cookieParser(process.env.COOKIE_PW));
 app.use('/', AuthRouter);
 app.use('/', emailRouter); 
 app.use('/', profileRouter); 
+app.use('/', practiceRouter); 
 
 app.listen(PORT, () => {
     console.log(`port started at ${PORT}`);

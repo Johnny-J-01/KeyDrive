@@ -22,6 +22,8 @@ export default function Practice() {
 
 	const inputRef = useRef(null);
 	const [userPersonalData, setUserPersonalData] = useState(null);
+	const [passageWordData, setPassageWordData] = useState(null);
+	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
 		const fetchUserData = async () => {
@@ -29,20 +31,48 @@ export default function Practice() {
 				method: "GET",
 				credentials: "include",
 			});
-			if (!response) {
-				toast.error("Unable to fetch user data");
+			if (!response.ok) {
+				toast.error("Please Login to save your results");
+				toast.error("Guest Mode, test taken won't be saved!");
 				return;
 			}
 			const data = await response.json();
 			setUserPersonalData(data.data.rows[0]);
 		};
+
 		fetchUserData();
 	}, []);
 
+	useEffect(() => {
+		const fetchTestWords = async () => {
+			try {
+				const response = await fetch(
+					"http://localhost:3000/practice/words",
+					{
+						method: "GET",
+						credentials: "include",
+					},
+				);
+				if (!response.ok) {
+					toast.error("Unable to fetch the words!!");
+					return;
+				}
+
+				const wordsData = await response.json();
+				setPassageWordData(wordsData.text);
+			} catch (error) {
+				console.error("Failed to fetch words:", error);
+				toast.error("Unable to fetch the words!!");
+			} finally {
+				setIsLoading(false);
+			}
+		};
+		fetchTestWords();
+	}, []);
 	// Initialize test
 	useEffect(() => {
 		resetTest();
-	}, [mode, timeLimit, wordLimit]);
+	}, [mode, timeLimit, wordLimit, passageWordData]);
 
 	// Timer logic
 	useEffect(() => {
@@ -60,11 +90,11 @@ export default function Practice() {
 		}
 	}, [startTime, isFinished, mode, timeLimit]);
 
-	const resetTest = async () => {
+	const resetTest = () => {
 		// Pick a random passage
-		let text =
-			mockPassages[Math.floor(Math.random() * mockPassages.length)];
-		if (mode === "passage") {
+		if (!passageWordData) return;
+		let text = passageWordData;
+		if (mode === "passage" && text != null) {
 			text = text.split(" ").slice(0, wordLimit).join(" ");
 		}
 		setPassage(text);
