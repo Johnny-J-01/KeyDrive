@@ -69,10 +69,12 @@ export default function Practice() {
 		};
 		fetchTestWords();
 	}, []);
+
 	// Initialize test
 	useEffect(() => {
+		if (!passageWordData) return;
 		resetTest();
-	}, [mode, timeLimit, wordLimit, passageWordData]);
+	}, [passageWordData, mode, timeLimit, wordLimit]);
 
 	// Timer logic
 	useEffect(() => {
@@ -93,7 +95,7 @@ export default function Practice() {
 	const resetTest = () => {
 		// Pick a random passage
 		if (!passageWordData) return;
-		let text = passageWordData;
+		const text = passageWordData;
 		if (mode === "passage" && text != null) {
 			text = text.split(" ").slice(0, wordLimit).join(" ");
 		}
@@ -177,6 +179,14 @@ export default function Practice() {
 			}
 		}
 	};
+
+	if (isLoading) {
+		return (
+			<div className="flex min-h-[400px] items-center justify-center">
+				<p className="text-textMuted">Loading practice test...</p>
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex flex-col items-center max-w-4xl mx-auto py-12">
@@ -270,7 +280,7 @@ export default function Practice() {
 						</span>
 					</div>
 
-					<div
+					{/* <div
 						className="text-2xl leading-loose font-mono text-textMuted break-words relative z-10"
 						onClick={() => inputRef.current?.focus()}
 					>
@@ -296,7 +306,7 @@ export default function Practice() {
 								</span>
 							);
 						})}
-					</div>
+					</div> */}
 
 					<input
 						ref={inputRef}
