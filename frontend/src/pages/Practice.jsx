@@ -22,6 +22,7 @@ export default function Practice() {
 
 	const inputRef = useRef(null);
 	const inputValueRef = useRef("");
+	const startTimeRef = useRef(null);
 	const [userPersonalData, setUserPersonalData] = useState(null);
 	const [passageWordData, setPassageWordData] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -78,17 +79,39 @@ export default function Practice() {
 	}, [passageWordData, mode, timeLimit, wordLimit]);
 
 	// Timer logic
+	// useEffect(() => {
+	// 	if (!startTime || isFinished || mode !== "time") return;
+
+	// 	const interval = setInterval(() => {
+	// 		const elapsed = Math.floor((Date.now() - startTime) / 1000);
+	// 		const remaining = timeLimit - elapsed;
+
+	// 		if (remaining <= 0) {
+	// 			clearInterval(interval);
+	// 			finishTest();
+	// 		} else {
+	// 			setTimeLeft(remaining);
+	// 		}
+	// 	}, 1000);
+
+	// 	return () => clearInterval(interval);
+	// }, [startTime, isFinished, mode, timeLimit, finishTest]);
+
 	useEffect(() => {
 		if (startTime && !isFinished && mode === "time") {
 			const interval = setInterval(() => {
 				const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
 				const remaining = timeLimit - elapsed;
+
 				if (remaining <= 0) {
+					clearInterval(interval);
 					finishTest();
 				} else {
 					setTimeLeft(remaining);
 				}
 			}, 1000);
+
 			return () => clearInterval(interval);
 		}
 	}, [startTime, isFinished, mode, timeLimit]);
@@ -130,19 +153,21 @@ export default function Practice() {
 	};
 
 	const finishTest = () => {
-		if (!startTime) return;
+		if (!startTime || isFinished) return;
+
+		// Get the latest value directly from the input element
+		const currentInput = inputRef.current?.value ?? "";
 
 		setIsFinished(true);
-
-		const currentInput = inputValueRef.current;
 
 		const elapsed =
 			mode === "time"
 				? timeLimit
-				: Math.floor((Date.now() - startTime) / 1000);
+				: Math.max(1, Math.floor((Date.now() - startTime) / 1000));
 
-		const minutes = elapsed / 60 || 1 / 60;
+		const minutes = elapsed / 60;
 
+		// Calculate stats
 		let correctChars = 0;
 		let errors = 0;
 
@@ -183,22 +208,35 @@ export default function Practice() {
 		});
 	};
 
+	// const handleInput = (e) => {
+	// 	if (isFinished) return;
+	// 	if (!startTime) {
+	// 		setStartTime(Date.now());
+	// 	}
+	// 	const val = e.target.value;
+
+	// 	if (val.length <= passage.length) {
+	// 		setInput(val);
+	// 		if (mode === "passage" && val.length === passage.length) {
+	// 			finishTest();
+	// 		}
+	// 	}
+	// };
+
 	const handleInput = (e) => {
 		if (isFinished) return;
-		if (!startTime) setStartTime(Date.now());
+
+		if (!startTime) {
+			setStartTime(Date.now());
+		}
 
 		const val = e.target.value;
 
 		if (val.length <= passage.length) {
-			inputValueRef.current = val;
 			setInput(val);
 
-			if (!startTime) {
-				setStartTime(Date.now());
-			}
-
 			if (mode === "passage" && val.length === passage.length) {
-				finishTest(val);
+				finishTest();
 			}
 		}
 	};

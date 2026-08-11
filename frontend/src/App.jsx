@@ -18,8 +18,9 @@ function App() {
 			<Navbar />
 			<main className="flex-grow max-w-6xl w-full mx-auto p-6">
 				<Routes>
-					<Route path="/" element={<Home />} />
+					<Route path="/" element={<Practice />} />
 					<Route path="/practice" element={<Practice />} />
+					<Route path="/home" element={<Home />} />
 					<Route path="/leaderboard" element={<Leaderboard />} />
 					<Route path="/race" element={<Race />} />
 					<Route path="/profile" element={<Profile />} />
