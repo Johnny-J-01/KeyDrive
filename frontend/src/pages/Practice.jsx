@@ -21,6 +21,7 @@ export default function Practice() {
 	const [stats, setStats] = useState({ wpm: 0, accuracy: 0, errors: 0 });
 
 	const inputRef = useRef(null);
+	const inputValueRef = useRef("");
 	const [userPersonalData, setUserPersonalData] = useState(null);
 	const [passageWordData, setPassageWordData] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -95,8 +96,8 @@ export default function Practice() {
 	const resetTest = () => {
 		// Pick a random passage
 		if (!passageWordData) return;
-		const text = passageWordData;
-		if (mode === "passage" && text != null) {
+		let text = passageWordData;
+		if (mode === "passage") {
 			text = text.split(" ").slice(0, wordLimit).join(" ");
 		}
 		setPassage(text);
@@ -130,33 +131,42 @@ export default function Practice() {
 
 	const finishTest = () => {
 		if (!startTime) return;
+
 		setIsFinished(true);
+
+		const currentInput = inputValueRef.current;
+
 		const elapsed =
 			mode === "time"
 				? timeLimit
 				: Math.floor((Date.now() - startTime) / 1000);
+
 		const minutes = elapsed / 60 || 1 / 60;
 
-		// Calculate stats
 		let correctChars = 0;
 		let errors = 0;
-		for (let i = 0; i < input.length; i++) {
-			if (input[i] === passage[i]) correctChars++;
-			else errors++;
+
+		for (let i = 0; i < currentInput.length; i++) {
+			if (currentInput[i] === passage[i]) {
+				correctChars++;
+			} else {
+				errors++;
+			}
 		}
 
 		const wordsTyped = correctChars / 5;
 		const wpm = Math.round(wordsTyped / minutes);
+
 		const accuracy =
-			input.length > 0
-				? Math.round((correctChars / input.length) * 100)
+			currentInput.length > 0
+				? Math.round((correctChars / currentInput.length) * 100)
 				: 0;
 
 		const userTestData = {
 			user_id: !userPersonalData ? "guest" : userPersonalData.id,
 			mode: mode,
 			word_count: wordLimit,
-			duration_seconds: timeLimit,
+			duration_seconds: elapsed,
 			wpm: wpm,
 			accuracy: accuracy,
 			errors: errors,
@@ -164,7 +174,13 @@ export default function Practice() {
 		};
 
 		postUserData(userTestData);
-		setStats({ wpm, accuracy, errors, chars: input.length });
+
+		setStats({
+			wpm,
+			accuracy,
+			errors,
+			chars: currentInput.length,
+		});
 	};
 
 	const handleInput = (e) => {
@@ -172,10 +188,17 @@ export default function Practice() {
 		if (!startTime) setStartTime(Date.now());
 
 		const val = e.target.value;
+
 		if (val.length <= passage.length) {
+			inputValueRef.current = val;
 			setInput(val);
+
+			if (!startTime) {
+				setStartTime(Date.now());
+			}
+
 			if (mode === "passage" && val.length === passage.length) {
-				finishTest();
+				finishTest(val);
 			}
 		}
 	};
