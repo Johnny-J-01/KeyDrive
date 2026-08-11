@@ -63,10 +63,7 @@ function groupWordsIntoLines(wordElements, words) {
 function CharSpan({ char, index, input }) {
 	let color = "";
 	if (index < input.length) {
-		color =
-			input[index] === char
-				? "text-white"
-				: "text-error bg-error/20";
+		color = input[index] === char ? "text-white" : "text-error bg-error/20";
 	}
 
 	const isCurrent = index === input.length;
@@ -142,7 +139,11 @@ export default function PassageViewport({ passage, input, onFocusInput }) {
 				className="invisible absolute top-0 left-0 w-full pointer-events-none select-none text-2xl leading-loose font-mono"
 			>
 				{words.map((word, index) => (
-					<span key={index} data-word-index={index} className="inline">
+					<span
+						key={index}
+						data-word-index={index}
+						className="inline"
+					>
 						{word.text}
 						{index < words.length - 1 ? " " : ""}
 					</span>
@@ -151,7 +152,7 @@ export default function PassageViewport({ passage, input, onFocusInput }) {
 
 			<div
 				className="overflow-hidden"
-				style={{ height: `calc(2.5rem * ${VISIBLE_LINE_COUNT})` }}
+				style={{ height: `calc(3rem * ${VISIBLE_LINE_COUNT})` }}
 				onClick={onFocusInput}
 			>
 				<div className="text-2xl leading-loose font-mono text-textMuted">
@@ -167,14 +168,18 @@ export default function PassageViewport({ passage, input, onFocusInput }) {
 									key={scrollLineIndex + lineIndex}
 									className="whitespace-pre-wrap min-h-[2.5rem]"
 								>
-									{lineText.split("").map((char, charIndex) => (
-										<CharSpan
-											key={line.startChar + charIndex}
-											char={char}
-											index={line.startChar + charIndex}
-											input={input}
-										/>
-									))}
+									{lineText
+										.split("")
+										.map((char, charIndex) => (
+											<CharSpan
+												key={line.startChar + charIndex}
+												char={char}
+												index={
+													line.startChar + charIndex
+												}
+												input={input}
+											/>
+										))}
 								</div>
 							);
 						})

@@ -308,6 +308,12 @@ export default function Practice() {
 						})}
 					</div> */}
 
+					<PassageViewport
+						passage={passage}
+						input={input}
+						onFocusInput={() => inputRef.current?.focus()}
+					/>
+
 					<input
 						ref={inputRef}
 						type="text"
