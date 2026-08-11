@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { RotateCcw, Clock, Hash } from "lucide-react";
 import clsx from "clsx";
 import { mockPassages } from "../data/mock";
+import { toast } from "sonner";
+import PassageViewport from "../components/PassageViewport";
 
 const TIME_MODES = [15, 30, 60, 120];
 const WORD_MODES = [10, 25, 50, 100];
@@ -28,7 +30,8 @@ export default function Practice() {
 				credentials: "include",
 			});
 			if (!response) {
-				console.log("Unable to fetch");
+				toast.error("Unable to fetch user data");
+				return;
 			}
 			const data = await response.json();
 			setUserPersonalData(data.data.rows[0]);
