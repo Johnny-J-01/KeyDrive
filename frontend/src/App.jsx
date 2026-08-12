@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
+import EditProfile from "./pages/EditProfile";
 import { Toaster } from "sonner";
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
 					<Route path="/profile" element={<Profile />} />
 					<Route path="/login" element={<Login />} />
 					<Route path="/register" element={<Register />} />
+					<Route path="/EditProfile" element={<EditProfile />} />
 					<Route
 						path="/forgot-password"
 						element={<ForgotPassword />}

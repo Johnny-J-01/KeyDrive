@@ -3,11 +3,14 @@ import { mockUsers } from "../data/mock";
 import { useEffect, useState } from "react";
 import { createRef } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export default function Profile() {
 	const user = mockUsers[0];
 	const [userPersonalData, setUserPersonalData] = useState(null);
 	const [userStatData, setUserStatData] = useState(null);
+	const navigate = useNavigate();
+
 	useEffect(() => {
 		const fetchData = async () => {
 			const response = await fetch("http://localhost:3000/profile", {
@@ -41,6 +44,10 @@ export default function Profile() {
 		fetchUserStatData();
 	}, []);
 
+	const handleEditButton = () => {
+		navigate("/EditProfile");
+	};
+
 	return (
 		<div className="max-w-5xl mx-auto py-8 flex flex-col gap-8">
 			{/* User Header */}
@@ -60,7 +67,10 @@ export default function Profile() {
 						<Clock className="w-4 h-4" /> Joined August 2026
 					</p>
 				</div>
-				<button className="px-6 py-2 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors font-medium rounded-lg">
+				<button
+					className="px-6 py-2 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors font-medium rounded-lg"
+					onClick={handleEditButton}
+				>
 					Edit Profile
 				</button>
 			</div>
@@ -134,6 +144,7 @@ export default function Profile() {
 				{/* Graph Placeholder */}
 				<div className="bg-surface border border-borderMain rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px]">
 					<Activity className="w-12 h-12 text-borderMain mb-4" />
+
 					<h3 className="text-xl font-bold text-textMuted mb-2">
 						Performance History
 					</h3>
