@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-    userRegisterSchema, 
+    userRegisterSchema,
     userLoginSchema
 } from '../validation/userAuth.validation.js';
 import bcrypt from 'bcrypt';
@@ -62,9 +62,44 @@ export const userAuthRegisterController = async (request, response) => {
     }
 }
 
+export const userAuthProfileController = async (request, response) => {
+    try {
+        const data = request.body;
+        const validationResult = userRegisterSchema.safeParse({userName: data.username, userEmail: data.email, userPassword: data.password});
+        if (!validationResult.success) {
+            return response.status(400).json({
+                success: false,
+                message: validationResult.error.issues
+            })
+        }
+
+        const userHashedPassword = await bcrypt.hash(data.password, 10);
+        const result = await pool.query(
+            `
+                UPDATE users 
+                SET 
+                    username = $1,
+                    email = $2,
+                    password_hash = $3 
+                WHERE id = $4
+                RETURNING *; 
+            `, [data.username, data.email, userHashedPassword, data.id]
+        );
+
+        response.status(200).json({
+            message: "Successfully updated the data into the database"
+        });
+    }
+    catch (error) {
+        response.status(400).json({
+            error: error
+        })
+    }
+}
+
 export const userAuthLoginController = async (request, response) => {
     try {
-        const data = request.body; 
+        const data = request.body;
         const validationResult = userLoginSchema.safeParse(data);
         if (!validationResult.success) {
             return response.status(400).json({
@@ -73,7 +108,7 @@ export const userAuthLoginController = async (request, response) => {
             })
         }
 
-        const { userEmail, userPassword } = data; 
+        const { userEmail, userPassword } = data;
 
         if (!userEmail || !userPassword) {
             response.status(400).json({
@@ -87,8 +122,8 @@ export const userAuthLoginController = async (request, response) => {
                 FROM users
                 WHERE email = $1; 
             `, [userEmail]
-        ); 
-        
+        );
+
         const isPasswordMatch = await bcrypt.compare(userPassword, dataBaseStoredUserData.rows[0].password_hash)
 
         if (!isPasswordMatch) {
@@ -97,7 +132,7 @@ export const userAuthLoginController = async (request, response) => {
             });
         }
         const dbUser = dataBaseStoredUserData.rows[0];
-        const token = generateVerificationToken(dbUser.id);  
+        const token = generateVerificationToken(dbUser.id);
         console.log(token);
         // response.cookie(, )
         response.cookie("token", token, {
