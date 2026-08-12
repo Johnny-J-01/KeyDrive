@@ -1,12 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Mail, Camera, ArrowLeft, Annoyed } from "lucide-react";
+import {
+	User,
+	Mail,
+	Camera,
+	ArrowLeft,
+	Eye,
+	EyeOff,
+	LogOut,
+	Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "../main";
 
 function EditProfile() {
 	const [userData, setUserData] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [newUserData, setNewUserData] = useState(null);
+	const [showPassword, setShowPassword] = useState(false);
+	const { user, logout } = useAuth();
+
 	const navigate = useNavigate();
 
 	useEffect(() => {
@@ -23,6 +36,7 @@ function EditProfile() {
 				}
 
 				const data = await response.json();
+
 				setNewUserData(data.data.rows[0]);
 			} catch (error) {
 				console.error("Failed to fetch user Data:", error);
@@ -31,16 +45,22 @@ function EditProfile() {
 				setIsLoading(false);
 			}
 		};
+
 		fetchUserPeronsalData();
 	}, []);
 
-	const handleEditFormChange = async (event) => {
+	const handleEditFormChange = (event) => {
 		const { name, value } = event.target;
-		setNewUserData((prev) => ({ ...prev, [name]: value }));
+
+		setNewUserData((prev) => ({
+			...prev,
+			[name]: value,
+		}));
 	};
 
 	const handleSaveChanges = async (event) => {
 		event.preventDefault();
+
 		const response = await fetch("http://localhost:3000/userEditProfile", {
 			method: "POST",
 			headers: {
@@ -58,6 +78,22 @@ function EditProfile() {
 		toast.success("Successfully saved the changes");
 		navigate("/profile");
 	};
+
+	const handleLogout = async () => {
+		const response = await fetch("http://localhost:3000/userAuthLogout", {
+			method: "POST",
+			credentials: "include",
+		});
+		if (!response.ok) {
+			console.log(`Failed to logout`);
+			toast.error("Failed to logout");
+		}
+		await logout();
+		toast.success("Logged Out");
+		navigate("/practice");
+	};
+
+	const handleDeleteAccount = async () => {};
 
 	if (isLoading) {
 		return (
@@ -114,7 +150,9 @@ function EditProfile() {
 							</div>
 
 							<div>
-								<h2 className="text-xl font-semibold">temp</h2>
+								<h2 className="text-xl font-semibold">
+									{newUserData?.username}
+								</h2>
 
 								<p className="text-sm text-slate-400 mt-1">
 									Change your profile picture
@@ -123,7 +161,7 @@ function EditProfile() {
 						</div>
 					</div>
 
-					{/* Form */}
+					{/* Form Fields */}
 					<div className="px-8 py-8 space-y-6">
 						{/* Username */}
 						<div>
@@ -139,7 +177,7 @@ function EditProfile() {
 
 								<input
 									type="text"
-									defaultValue={newUserData.username}
+									value={newUserData?.username || ""}
 									placeholder="Enter your username"
 									className="w-full bg-[#0d0f14] border border-slate-700 rounded-lg py-3 pl-11 pr-4 text-white placeholder-slate-500 outline-none focus:border-blue-500 transition"
 									onChange={handleEditFormChange}
@@ -162,7 +200,7 @@ function EditProfile() {
 
 								<input
 									type="email"
-									defaultValue={newUserData.email}
+									value={newUserData?.email || ""}
 									placeholder="Enter your email"
 									className="w-full bg-[#0d0f14] border border-slate-700 rounded-lg py-3 pl-11 pr-4 text-white placeholder-slate-500 outline-none focus:border-blue-500 transition"
 									onChange={handleEditFormChange}
@@ -171,10 +209,10 @@ function EditProfile() {
 							</div>
 						</div>
 
-						{/* Password*/}
+						{/* Password */}
 						<div>
 							<label className="block text-sm font-medium text-slate-300 mb-2">
-								Password
+								New Password
 							</label>
 
 							<div className="relative">
@@ -184,31 +222,71 @@ function EditProfile() {
 								/>
 
 								<input
-									type="password"
-									placeholder="Enter your new Password"
-									defaultValue={newUserData.password_hash}
-									className="w-full bg-[#0d0f14] border border-slate-700 rounded-lg py-3 pl-11 pr-4 text-white placeholder-slate-500 outline-none focus:border-blue-500 transition"
+									type={showPassword ? "text" : "password"}
+									placeholder="Enter your new password"
+									className="w-full bg-[#0d0f14] border border-slate-700 rounded-lg py-3 pl-11 pr-12 text-white placeholder-slate-500 outline-none focus:border-blue-500 transition"
 									onChange={handleEditFormChange}
 									name="password"
+									autoComplete="new-password"
 								/>
+
+								<button
+									type="button"
+									onClick={() =>
+										setShowPassword((prev) => !prev)
+									}
+									className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+								>
+									{showPassword ? (
+										<EyeOff size={18} />
+									) : (
+										<Eye size={18} />
+									)}
+								</button>
 							</div>
 						</div>
 
-						{/* Buttons */}
-						<div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-							<Link
-								to="/profile"
-								className="px-5 py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white transition"
-							>
-								Cancel
-							</Link>
+						{/* Bottom Actions */}
+						<div className="flex items-center justify-between pt-6 border-t border-slate-800">
+							{/* Left Side - Account Actions */}
+							<div className="flex items-center gap-3">
+								{/* Logout */}
+								<button
+									type="button"
+									onClick={handleLogout}
+									className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition"
+								>
+									<LogOut size={17} />
+									Logout
+								</button>
 
-							<button
-								className="px-6 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition"
-								type="submit"
-							>
-								Save Changes
-							</button>
+								{/* Delete Account */}
+								<button
+									type="button"
+									onClick={handleDeleteAccount}
+									className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-red-900/60 text-red-400 hover:text-red-300 hover:bg-red-950/30 transition"
+								>
+									<Trash2 size={17} />
+									Delete Account
+								</button>
+							</div>
+
+							{/* Right Side - Save Actions */}
+							<div className="flex items-center gap-3">
+								<Link
+									to="/profile"
+									className="px-5 py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white transition"
+								>
+									Cancel
+								</Link>
+
+								<button
+									className="px-6 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition"
+									type="submit"
+								>
+									Save Changes
+								</button>
+							</div>
 						</div>
 					</div>
 				</form>

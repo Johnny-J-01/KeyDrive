@@ -35,7 +35,6 @@ export default function Login() {
 		}
 
 		const data = await response.json();
-		console.log(data);
 		login(data.user);
 		toast.success("Successfully Logged in!");
 		navigate("/practice");
