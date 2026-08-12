@@ -24,7 +24,7 @@ export const userProfileController = async (request, response) => {
     }
 }
 
-export const userStatsController = async (request, response) => {
+export const userStatsPostController = async (request, response) => {
     try {
         const data = request.body;  
         console.log(data);
@@ -41,6 +41,36 @@ export const userStatsController = async (request, response) => {
             message: "Data updated in the database successfully!!", 
             data: result.rows[0]
         })
+    }
+    catch (error) {
+        console.error("DATABASE ERROR:", error);
+        response.status(400).json({
+            error: error.messadg
+        })
+    }
+} 
+
+export const userStatsGetController = async (request, response) => {
+    try {
+        const result = await pool.query(
+            `
+                SELECT ROUND(AVG(wpm), 2) as AVG_WPM,
+                ROUND(AVG(accuracy), 2) as AVG_accuracy
+                FROM practice_history; 
+            `
+        ) 
+        const AVG_WPM = result.rows[0].avg_wpm; 
+        const AVG_Acc = result.rows[0].avg_accuracy; 
+
+        const statData = {
+            AVG_WPM, 
+            AVG_Acc,
+        }
+
+        response.status(201).json({
+            message: "Data updated in the database successfully!!", 
+            data: statData 
+        }); 
     }
     catch (error) {
         console.error("DATABASE ERROR:", error);

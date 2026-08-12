@@ -1,6 +1,8 @@
 import { Activity, Clock, Trophy, Target, Star, Flame } from "lucide-react";
 import { mockUsers } from "../data/mock";
 import { useEffect, useState } from "react";
+import { createRef } from "react";
+import { toast } from "sonner";
 
 export default function Profile() {
 	const user = mockUsers[0];
@@ -15,13 +17,28 @@ export default function Profile() {
 
 			const data = await response.json();
 			if (!response.ok) {
-				console.log("Internal Server Error");
+				toast.error("Unable to fetch User Data");
 				return;
 			}
 			setUserPersonalData(data.data.rows[0]);
 		};
 
+		const fetchUserStatData = async () => {
+			const response = await fetch("http://localhost:3000/stats", {
+				method: "GET",
+				credentials: "include",
+			});
+
+			if (!response.ok) {
+				toast.error("Unable to fetch User Stats Data");
+				return;
+			}
+			const statData = await response.json();
+			setUserStatData(statData.data);
+		};
+
 		fetchData();
+		fetchUserStatData();
 	}, []);
 
 	return (
@@ -53,12 +70,12 @@ export default function Profile() {
 				<StatCard
 					icon={Activity}
 					label="Average WPM"
-					value={!userStatData ? 145 : userStatData.wpm}
+					value={!userStatData ? 0 : `${userStatData.AVG_WPM}`}
 				/>
 				<StatCard
 					icon={Target}
 					label="Accuracy"
-					value={!userStatData ? 100 : `${userStatData.accuracy}%`}
+					value={!userStatData ? 0 : `${userStatData.AVG_Acc}%`}
 				/>
 				<StatCard
 					icon={Trophy}
