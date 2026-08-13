@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { Trophy, Search, Medal } from "lucide-react";
 import clsx from "clsx";
-import { mockUsers } from "../data/mock";
-import { useEffectEvent } from "react";
 import { toast } from "sonner";
 
 const FILTERS = ["Daily", "Weekly", "Monthly", "All Time"];
@@ -48,6 +46,10 @@ export default function Leaderboard() {
 			</div>
 		);
 	}
+
+	const filteredUsers = allUsersData.filter((user) =>
+		user.username.toLowerCase().includes(search.toLowerCase()),
+	);
 
 	return (
 		<div className="flex flex-col max-w-5xl mx-auto py-8">
@@ -114,7 +116,7 @@ export default function Leaderboard() {
 							</tr>
 						</thead>
 						<tbody>
-							{allUsersData.map((user, index) => (
+							{filteredUsers.map((user, index) => (
 								<tr
 									key={user.id}
 									className="border-b border-borderMain/50 last:border-0 hover:bg-white/[0.02] transition-colors"
@@ -158,7 +160,7 @@ export default function Leaderboard() {
 									</td>
 								</tr>
 							))}
-							{allUsersData.length === 0 && (
+							{filteredUsers.length === 0 && (
 								<tr>
 									<td
 										colSpan="5"
