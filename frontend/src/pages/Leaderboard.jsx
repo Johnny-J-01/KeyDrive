@@ -148,7 +148,7 @@ export default function Leaderboard() {
 										</div>
 									</td>
 									<td className="px-6 py-4 text-right font-mono font-bold text-primary text-lg">
-										{user.wpm}
+										{user.max_wpm}
 									</td>
 									<td className="px-6 py-4 text-right font-mono text-textMuted">
 										{user.accuracy}%

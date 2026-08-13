@@ -1,9 +1,9 @@
-import express, { response } from 'express'; 
-import dotenv from 'dotenv'; 
-import pool from '../model/db.js'; 
-import jwt from 'jsonwebtoken'; 
+import express, { response } from 'express';
+import dotenv from 'dotenv';
+import pool from '../model/db.js';
+import jwt from 'jsonwebtoken';
 
-dotenv.config(); 
+dotenv.config();
 
 export const userProfileController = async (request, response) => {
     try {
@@ -13,11 +13,11 @@ export const userProfileController = async (request, response) => {
                 FROM users 
                 WHERE id = $1
             `, [request.user.userId]
-        ) 
+        )
         response.status(200).json({
-            data: userPersonalData 
+            data: userPersonalData
         })
-    } 
+    }
     catch (error) {
         response.status(400).json({
             error: error
@@ -27,7 +27,7 @@ export const userProfileController = async (request, response) => {
 
 export const userStatsPostController = async (request, response) => {
     try {
-        const data = request.body;  
+        const data = request.body;
         console.log(data);
         const result = await pool.query(
             `
@@ -35,11 +35,11 @@ export const userStatsPostController = async (request, response) => {
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 RETURNING *; 
             `, [request.user.userId, data.mode, data.word_count, data.duration_seconds, data.wpm, data.accuracy, data.errors, data.started_at]
-        ); 
+        );
 
-        
+
         response.status(201).json({
-            message: "Data updated in the database successfully!!", 
+            message: "Data updated in the database successfully!!",
             data: result.rows[0]
         })
     }
@@ -49,7 +49,7 @@ export const userStatsPostController = async (request, response) => {
             error: error.messadg
         })
     }
-} 
+}
 
 export const userStatsGetController = async (request, response) => {
     try {
@@ -59,19 +59,19 @@ export const userStatsGetController = async (request, response) => {
                 ROUND(AVG(accuracy), 2) as AVG_accuracy
                 FROM practice_history; 
             `
-        ) 
-        const AVG_WPM = result.rows[0].avg_wpm; 
-        const AVG_Acc = result.rows[0].avg_accuracy; 
+        )
+        const AVG_WPM = result.rows[0].avg_wpm;
+        const AVG_Acc = result.rows[0].avg_accuracy;
 
         const statData = {
-            AVG_WPM, 
+            AVG_WPM,
             AVG_Acc,
         }
 
         response.status(201).json({
-            message: "Data updated in the database successfully!!", 
-            data: statData 
-        }); 
+            message: "Data updated in the database successfully!!",
+            data: statData
+        });
     }
     catch (error) {
         console.error("DATABASE ERROR:", error);
@@ -79,32 +79,35 @@ export const userStatsGetController = async (request, response) => {
             error: error.messadg
         })
     }
-} 
+}
 
 export const allUserDataController = async (request, response) => {
     try {
         const result = await pool.query(
             `
-            SELECT
-                users.id,
-                users.username,
-                MAX(practice_history.wpm) AS max_wpm
-            FROM users
-            JOIN practice_history
-                ON users.id = practice_history.user_id
-            GROUP BY
-                users.id,
-                users.username
-            ORDER BY
-                max_wpm DESC;
+                SELECT *
+                FROM (
+                    SELECT DISTINCT ON (users.id)
+                        users.id,
+                        users.username,
+                        practice_history.wpm AS max_wpm,
+                        practice_history.accuracy
+                    FROM users
+                    JOIN practice_history
+                        ON users.id = practice_history.user_id
+                    ORDER BY
+                        users.id,
+                        practice_history.wpm DESC
+                ) AS leaderboard
+                ORDER BY max_wpm DESC;
             `
-        ); 
+        );
 
         if (!result) {
             response.status(400).json({
                 message: "Failed to Fetch Data"
-            }); 
-            return; 
+            });
+            return;
         }
 
         response.status(200).json({
@@ -114,7 +117,7 @@ export const allUserDataController = async (request, response) => {
     }
     catch (error) {
         response.status(400).json({
-            error: error 
-        }); 
+            error: error
+        });
     }
 }
