@@ -162,7 +162,40 @@ export const userAuthLogoutController = (request, response) => {
     response.status(200).json({ message: "Logged out successfully" });
 }
 
-export const userAuthDeleteController = (request, response) => {
+export const userAuthDeleteController = async (request, response) => {
+    try {
+        const token = jwt.verify(request.signedCookies.token, process.env.JWT_SECRET); 
+        if (!token) {
+            response.status(400).json({
+                message: "Login to your account, to proceed with the deletion of the account"
+            })
+        }
+        const userId = token.userId; 
 
+        const result = await pool.query(
+            `
+                DELETE FROM users 
+                WHERE id = $1 
+            `, [userId]
+        ); 
+
+
+        if (!result) {
+            response.status(400).json({
+                success: false,  
+                message: "user not found"
+            })
+        }
+
+        response.status(200).json({
+            success: true,
+            message: "deleted Successfully"
+        })
+    }
+    catch (error) {
+        response.status(400).json({
+            error: error.message
+        }); 
+    }
 }
 

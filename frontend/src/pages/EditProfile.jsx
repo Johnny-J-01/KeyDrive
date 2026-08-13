@@ -93,7 +93,21 @@ function EditProfile() {
 		navigate("/practice");
 	};
 
-	const handleDeleteAccount = async () => {};
+	const handleDeleteAccount = async () => {
+		const response = await fetch("http://localhost:3000/userAuthDelete", {
+			method: "GET",
+			credentials: "include",
+		});
+
+		if (!response.ok) {
+			toast.error("Failed to Delete the account");
+			return;
+		}
+
+		toast.success("Successfully Deleted the account");
+		toast.success("Redirecting to the home page");
+		navigate("/login");
+	};
 
 	if (isLoading) {
 		return (
