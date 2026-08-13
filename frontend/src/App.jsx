@@ -39,7 +39,7 @@ function App() {
 				</Routes>
 				<Toaster
 					richColors
-					position="top-right"
+					position="bottom-right"
 					visibleToasts={100}
 					expand
 					closeButton

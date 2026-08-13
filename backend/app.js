@@ -7,6 +7,7 @@ import AuthRouter from '../backend/routes/userAuth.routes.js';
 import emailRouter from '../backend/routes/EmailVerification.routes.js'; 
 import statsRouter from '../backend/routes/userStats.routes.js'; 
 import practiceRouter from '../backend/routes/practice.routes.js'; 
+import resetPasswordRouter from '../backend/routes/ResetPasword.route.js'; 
 
 dotenv.config(); 
 
@@ -36,6 +37,7 @@ app.use('/', AuthRouter);
 app.use('/', emailRouter); 
 app.use('/', statsRouter); 
 app.use('/', practiceRouter); 
+app.use('/', resetPasswordRouter); 
 
 app.listen(PORT, () => {
     console.log(`port started at ${PORT}`);

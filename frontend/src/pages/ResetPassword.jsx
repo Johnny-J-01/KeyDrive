@@ -19,10 +19,10 @@ function ResetPassword() {
 				"http://localhost:3000/resetPassword",
 				{
 					method: "PATCH",
-					body: JSON.stringify({ token: token, password: password }),
 					headers: {
 						"Content-Type": "application/json",
 					},
+					body: JSON.stringify({ token: token, password: password }),
 					credentials: "include",
 				},
 			);
