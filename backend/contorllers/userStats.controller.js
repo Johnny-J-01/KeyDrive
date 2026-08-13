@@ -1,6 +1,7 @@
 import express, { response } from 'express'; 
 import dotenv from 'dotenv'; 
 import pool from '../model/db.js'; 
+import jwt from 'jsonwebtoken'; 
 
 dotenv.config(); 
 
@@ -79,3 +80,41 @@ export const userStatsGetController = async (request, response) => {
         })
     }
 } 
+
+export const allUserDataController = async (request, response) => {
+    try {
+        const result = await pool.query(
+            `
+            SELECT
+                users.id,
+                users.username,
+                MAX(practice_history.wpm) AS max_wpm
+            FROM users
+            JOIN practice_history
+                ON users.id = practice_history.user_id
+            GROUP BY
+                users.id,
+                users.username
+            ORDER BY
+                max_wpm DESC;
+            `
+        ); 
+
+        if (!result) {
+            response.status(400).json({
+                message: "Failed to Fetch Data"
+            }); 
+            return; 
+        }
+
+        response.status(200).json({
+            message: "Data successfully fetched",
+            data: result.rows
+        })
+    }
+    catch (error) {
+        response.status(400).json({
+            error: error 
+        }); 
+    }
+}
