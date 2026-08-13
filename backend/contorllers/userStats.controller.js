@@ -83,6 +83,40 @@ export const userStatsGetController = async (request, response) => {
 
 export const allUserDataController = async (request, response) => {
     try {
+        const { filter } = request.query;
+        console.log(filter);
+        let dateCondition = "";
+
+        switch (filter) {
+            case "Daily":
+                dateCondition = `
+					AND practice_history.started_at >= CURRENT_DATE
+				`;
+                break;
+
+            case "Weekly":
+                dateCondition = `
+					AND practice_history.started_at >= DATE_TRUNC('week', CURRENT_DATE)
+				`;
+                break;
+
+            case "Monthly":
+                dateCondition = `
+					AND practice_history.started_at >= DATE_TRUNC('month', CURRENT_DATE)
+				`;
+                break;
+
+            case "All Time":
+                dateCondition = "";
+                break;
+
+            default:
+                response.status(400).json({
+                    message: "Invalid leaderboard filter",
+                });
+                return;
+        }
+
         const result = await pool.query(
             `
                 SELECT *
@@ -90,11 +124,14 @@ export const allUserDataController = async (request, response) => {
                     SELECT DISTINCT ON (users.id)
                         users.id,
                         users.username,
+                        users.avatar_url,
                         practice_history.wpm AS max_wpm,
                         practice_history.accuracy
                     FROM users
                     JOIN practice_history
                         ON users.id = practice_history.user_id
+                    WHERE 1 = 1
+                    ${dateCondition}
                     ORDER BY
                         users.id,
                         practice_history.wpm DESC
@@ -116,6 +153,7 @@ export const allUserDataController = async (request, response) => {
         })
     }
     catch (error) {
+        console.error(error); 
         response.status(400).json({
             error: error
         });
