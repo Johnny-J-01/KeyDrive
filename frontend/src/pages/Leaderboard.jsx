@@ -8,15 +8,14 @@ const FILTERS = ["Daily", "Weekly", "Monthly", "All Time"];
 export default function Leaderboard() {
 	const [activeFilter, setActiveFilter] = useState("All Time");
 	const [search, setSearch] = useState("");
-	const [allUsersData, setAllUsersData] = useState([]);
+	const [allUsersData, setAllUsersData] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
 		const fetchAllUsersData = async () => {
-			setIsLoading(true);
 			try {
 				const response = await fetch(
-					`http://localhost:3000/users/all/data?filter=${encodeURIComponent(activeFilter)}`,
+					"http://localhost:3000/users/all/data",
 					{
 						method: "GET",
 						credentials: "include",
@@ -38,7 +37,7 @@ export default function Leaderboard() {
 			}
 		};
 		fetchAllUsersData();
-	}, [activeFilter]);
+	}, []);
 
 	if (isLoading == true) {
 		return (

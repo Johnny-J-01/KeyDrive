@@ -12,6 +12,7 @@ import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import EditProfile from "./pages/EditProfile";
 import { Toaster } from "sonner";
+import LiveRace from "./pages/LiveRace";
 
 function App() {
 	return (
@@ -24,6 +25,7 @@ function App() {
 					<Route path="/home" element={<Home />} />
 					<Route path="/leaderboard" element={<Leaderboard />} />
 					<Route path="/race" element={<Race />} />
+					<Route path="/live" element={<LiveRace />} />
 					<Route path="/profile" element={<Profile />} />
 					<Route path="/login" element={<Login />} />
 					<Route path="/register" element={<Register />} />
