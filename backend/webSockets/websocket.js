@@ -31,17 +31,26 @@ export const setUpWebSocketServer = (wss) => {
                     return r.id === parsedMessage.payload.roomId
                 });
                 if (findRoomToJoin) {
-                    findRoomToJoin.players.push(parsedMessage.payload.user);
-                    findRoomToJoin.playerCount = findRoomToJoin.playerCount + 1;
-                    const response = JSON.stringify({
-                        type: "room:joined",
-                        payload: findRoomToJoin,
-                    });
-                    wss.clients.forEach((client) => {
-                        if (client.readyState === WebSocket.OPEN) {
-                            client.send(response);
-                        }
-                    });
+                    if (findRoomToJoin.type === "private" && findRoomToJoin.password !== parsedMessage.payload.password) {
+                        const response = JSON.stringify({
+                            type: "room:join:error",
+                            payload: "Incorrect password for private room.",
+                        });
+                        socket.send(response);
+                    }
+                    else {
+                        findRoomToJoin.players.push(parsedMessage.payload.user);
+                        findRoomToJoin.playerCount = findRoomToJoin.playerCount + 1;
+                        const response = JSON.stringify({
+                            type: "room:joined",
+                            payload: findRoomToJoin,
+                        });
+                        wss.clients.forEach((client) => {
+                            if (client.readyState === WebSocket.OPEN) {
+                                client.send(response);
+                            }
+                        });
+                    }
                 }
             }
             if (parsedMessage.type === "room:leave") {

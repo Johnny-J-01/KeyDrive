@@ -49,6 +49,7 @@ export default function Race() {
 	const socketRef = useRef(null);
 	const [isLoading, setIsLoading] = useState(true);
 
+	// fetch user data on component mount
 	useEffect(() => {
 		const fetchUserData = async () => {
 			try {
@@ -80,6 +81,7 @@ export default function Race() {
 		fetchUserData();
 	}, []);
 
+	// WebSocket connection and event handling
 	useEffect(() => {
 		const socket = new WebSocket("ws://localhost:3000");
 		console.log("connected to websocket server");
@@ -105,6 +107,9 @@ export default function Race() {
 			}
 			if (message.type === "room:joined") {
 				setActiveRoom(message.payload);
+			}
+			if (message.type === "room:join:error") {
+				toast.error(message.payload);
 			}
 			if (message.type === "room:left") {
 				setActiveRoom(null);
@@ -172,10 +177,9 @@ export default function Race() {
 				payload: { roomId: room.id, user: userData },
 			}),
 		);
-		setActiveRoom(updatedRoom);
 	};
 
-	const handleJoinPrivateRoom = (roomCode) => {
+	const handleJoinPrivateRoom = (roomCode, roomPassword) => {
 		const room = rooms.find(
 			(currentRoom) =>
 				currentRoom.id.toLowerCase() === roomCode.toLowerCase(),
@@ -217,14 +221,13 @@ export default function Race() {
 		socketRef.current?.send(
 			JSON.stringify({
 				type: "room:join",
-				payload: { roomId: room.id, user: userData },
+				payload: {
+					roomId: room.id,
+					user: userData,
+					password: roomPassword,
+				},
 			}),
 		);
-		setActiveRoom(updatedRoom);
-
-		return {
-			success: true,
-		};
 	};
 
 	const handleLeaveRoom = () => {
@@ -610,6 +613,7 @@ function CreateRoomModal({ onClose, onCreate }) {
 
 function JoinPrivateRoomModal({ onClose, onJoin }) {
 	const [roomCode, setRoomCode] = useState("");
+	const [roomPassword, setRoomPassword] = useState("");
 	const [error, setError] = useState("");
 
 	const handleSubmit = (event) => {
@@ -620,7 +624,7 @@ function JoinPrivateRoomModal({ onClose, onJoin }) {
 			return;
 		}
 
-		const result = onJoin(roomCode.trim());
+		const result = onJoin(roomCode.trim(), roomPassword.trim());
 
 		if (!result?.success) {
 			setError(result?.message || "Unable to join room.");
@@ -642,7 +646,7 @@ function JoinPrivateRoomModal({ onClose, onJoin }) {
 				</h2>
 
 				<p className="text-sm text-textMuted mt-1">
-					Enter the room code shared by your friend.
+					Enter the room code and password shared by your friend.
 				</p>
 			</div>
 
@@ -660,6 +664,21 @@ function JoinPrivateRoomModal({ onClose, onJoin }) {
 							setError("");
 						}}
 						placeholder="e.g. A82KD"
+						className="w-full px-4 py-3 rounded-lg bg-surface border border-borderMain text-white placeholder:text-textMuted outline-none focus:border-primary font-mono tracking-widest uppercase"
+					/>
+
+					<label className="text-sm font-medium text-white mb-2 block">
+						Room Password
+					</label>
+
+					<input
+						type="password"
+						value={roomPassword}
+						onChange={(event) => {
+							setRoomPassword(event.target.value);
+							setError("");
+						}}
+						placeholder="*******"
 						className="w-full px-4 py-3 rounded-lg bg-surface border border-borderMain text-white placeholder:text-textMuted outline-none focus:border-primary font-mono tracking-widest uppercase"
 					/>
 
