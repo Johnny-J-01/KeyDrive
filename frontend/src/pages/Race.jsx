@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
 	Users,
 	Plus,
@@ -9,12 +9,13 @@ import {
 	ChevronRight,
 } from "lucide-react";
 import RoomLobby from "../pages/RoomLobby";
+import { toast } from "sonner";
 
 export default function Race() {
 	// TEmp hardcoded rooms (in dev);
 	const [rooms, setRooms] = useState([
 		{
-			id: "A82KD",
+			id: "FUCK",
 			name: "Friday Night Race",
 			type: "public",
 			status: "waiting",
@@ -38,14 +39,82 @@ export default function Race() {
 			capacity: 5,
 		},
 	]);
-
-	const [userData] = useState({
-		id: 1,
-		username: "Ashmit",
+	const [userData, setUserData] = useState({
+		id: `${crypto.randomUUID()}`,
+		username: "guest",
 	});
 	const [activeRoom, setActiveRoom] = useState(null);
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [showJoinModal, setShowJoinModal] = useState(false);
+	const socketRef = useRef(null);
+	const [isLoading, setIsLoading] = useState(true);
+
+	useEffect(() => {
+		const fetchUserData = async () => {
+			try {
+				const response = await fetch("http://localhost:3000/profile", {
+					method: "GET",
+					credentials: "include",
+				});
+				if (!response.ok) {
+					toast.error("Guest Account");
+					console.log("Guest data: ", userData);
+					return;
+				}
+				const loggedInUserData = await response.json();
+				console.log(
+					"Fetched user data:",
+					loggedInUserData.data.rows[0],
+				);
+				setUserData({
+					id: loggedInUserData.data.rows[0].id,
+					username: loggedInUserData.data.rows[0].username,
+				});
+			} catch (error) {
+				toast.error("Error fetching user data");
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		fetchUserData();
+	}, []);
+
+	useEffect(() => {
+		const socket = new WebSocket("ws://localhost:3000");
+		console.log("connected to websocket server");
+		socketRef.current = socket;
+
+		socket.onopen = () => {
+			socket.send(JSON.stringify({ type: "room:list" }));
+		};
+
+		socket.onmessage = (event) => {
+			const message = JSON.parse(event.data);
+			if (message.type === "room:list") {
+				setRooms(message.payload);
+			}
+			if (message.type === "room:created") {
+				setRooms((currentRooms) => [...currentRooms, message.payload]);
+			}
+			if (message.type === "room:deleted") {
+				setRooms((currentRooms) =>
+					currentRooms.filter(
+						(room) => room.id !== message.payload.roomId,
+					),
+				);
+				setActiveRoom(null);
+			}
+			if (message.type === "room:joined") {
+				setActiveRoom(message.payload);
+			}
+		};
+
+		return () => {
+			socket.close();
+			socketRef.current = null;
+		};
+	}, []);
 
 	const handleCreateRoom = (roomData) => {
 		const newRoom = {
@@ -55,10 +124,8 @@ export default function Race() {
 			status: "waiting",
 			playerCount: 1,
 			capacity: roomData.capacity,
-
-			// Temp FE value.
 			password: roomData.password,
-
+			adminId: userData.id,
 			players: [
 				{
 					id: userData.id,
@@ -67,13 +134,19 @@ export default function Race() {
 			],
 		};
 
-		setRooms((currentRooms) => [...currentRooms, newRoom]);
 		setShowCreateModal(false);
+		socketRef.current?.send(
+			JSON.stringify({
+				type: "room:create",
+				payload: newRoom,
+			}),
+		);
 		setActiveRoom(newRoom);
 	};
 
 	const handleJoinPublicRoom = (room) => {
 		if (room.playerCount >= room.capacity) {
+			toast.message("This room is full.");
 			return;
 		}
 
@@ -89,6 +162,12 @@ export default function Race() {
 			],
 		};
 
+		socketRef.current?.send(
+			JSON.stringify({
+				type: "room:join",
+				payload: { roomId: room.id, user: userData },
+			}),
+		);
 		setActiveRoom(updatedRoom);
 	};
 
@@ -132,6 +211,12 @@ export default function Race() {
 		};
 
 		setActiveRoom(updatedRoom);
+		socketRef.current?.send(
+			JSON.stringify({
+				type: "room:join",
+				payload: { roomId: room.id, user: userData },
+			}),
+		);
 
 		return {
 			success: true,
@@ -139,6 +224,29 @@ export default function Race() {
 	};
 
 	const handleLeaveRoom = () => {
+		if (activeRoom) {
+			const isAdmin = activeRoom.adminId === userData.id;
+			socketRef.current?.send(
+				JSON.stringify({
+					type: isAdmin ? "room:delete" : "room:leave",
+					payload: isAdmin
+						? { roomId: activeRoom.id, adminId: userData.id }
+						: { roomId: activeRoom.id, userId: userData.id },
+				}),
+			);
+		}
+		setActiveRoom(null);
+	};
+
+	const handleDeleteRoom = () => {
+		if (!activeRoom || activeRoom.adminId !== userData.id) return;
+
+		socketRef.current?.send(
+			JSON.stringify({
+				type: "room:delete",
+				payload: { roomId: activeRoom.id, adminId: userData.id },
+			}),
+		);
 		setActiveRoom(null);
 	};
 
@@ -148,6 +256,7 @@ export default function Race() {
 				room={activeRoom}
 				userData={userData}
 				onLeave={handleLeaveRoom}
+				onDelete={handleDeleteRoom}
 			/>
 		);
 	}
@@ -597,6 +706,7 @@ function Modal({ children, onClose }) {
 		</div>
 	);
 }
+
 function generateRoomCode() {
 	return Math.random().toString(36).substring(2, 7).toUpperCase();
 }

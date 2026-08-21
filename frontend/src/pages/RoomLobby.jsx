@@ -1,8 +1,10 @@
 import { Users, Copy, LogOut, Play, Lock, Globe, Check } from "lucide-react";
 import { useState } from "react";
 
-export default function RoomLobby({ room, userData, onLeave }) {
+export default function RoomLobby({ room, userData, onLeave, onDelete }) {
 	const [copied, setCopied] = useState(false);
+	const isAdmin = room.adminId === userData.id;
+
 	const players =
 		room.players?.length > 0
 			? room.players
@@ -50,13 +52,24 @@ export default function RoomLobby({ room, userData, onLeave }) {
 						</p>
 					</div>
 
-					<button
-						onClick={onLeave}
-						className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-borderMain text-textMuted hover:text-white hover:border-red-500/40 transition-colors"
-					>
-						<LogOut className="w-4 h-4" />
-						Leave Room
-					</button>
+					<div className="flex gap-3">
+						<button
+							onClick={onLeave}
+							className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-borderMain text-textMuted hover:text-white hover:border-red-500/40 transition-colors"
+						>
+							<LogOut className="w-4 h-4" />
+							Leave Room
+						</button>
+
+						{isAdmin && (
+							<button
+								onClick={onDelete}
+								className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-colors"
+							>
+								Delete Room
+							</button>
+						)}
+					</div>
 				</div>
 				<div className="bg-surface border border-borderMain rounded-xl p-6">
 					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
@@ -121,7 +134,7 @@ export default function RoomLobby({ room, userData, onLeave }) {
 								key={player.id}
 								player={player}
 								isCurrentUser={player.id === userData.id}
-								isHost={index === 0}
+								isHost={player.id === room.adminId}
 							/>
 						))}
 
@@ -135,7 +148,7 @@ export default function RoomLobby({ room, userData, onLeave }) {
 
 				<div className="bg-surface border border-borderMain rounded-xl p-6">
 					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-						<div>
+						{/* <div>
 							<h3 className="font-bold text-white mb-1">
 								Ready to race?
 							</h3>
@@ -144,12 +157,12 @@ export default function RoomLobby({ room, userData, onLeave }) {
 								Wait for your friends to join, then start the
 								race.
 							</p>
-						</div>
+						</div> */}
 
 						<button
 							disabled={players.length < 1}
 							className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-							onClick={handleStartRace}
+							// onClick={handleStartRace}
 						>
 							<Play className="w-4 h-4" />
 							Start Race
@@ -181,9 +194,7 @@ function PlayerRow({ player, isCurrentUser, isHost }) {
 					</div>
 
 					{isHost && (
-						<span className="text-xs text-textMuted">
-							Room Host
-						</span>
+						<span className="text-xs text-primary">Admin</span>
 					)}
 				</div>
 			</div>
