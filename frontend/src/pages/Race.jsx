@@ -10,40 +10,17 @@ import {
 } from "lucide-react";
 import RoomLobby from "../pages/RoomLobby";
 import { toast } from "sonner";
+import LiveRace from "./LiveRace";
 
 export default function Race() {
 	// TEmp hardcoded rooms (in dev);
-	const [rooms, setRooms] = useState([
-		{
-			id: "FUCK",
-			name: "Friday Night Race",
-			type: "public",
-			status: "waiting",
-			playerCount: 2,
-			capacity: 5,
-		},
-		{
-			id: "B72PQ",
-			name: "Speed Demons",
-			type: "public",
-			status: "starting",
-			playerCount: 4,
-			capacity: 5,
-		},
-		{
-			id: "C91LM",
-			name: "Casual Typing",
-			type: "public",
-			status: "waiting",
-			playerCount: 1,
-			capacity: 5,
-		},
-	]);
+	const [rooms, setRooms] = useState([]);
 	const [userData, setUserData] = useState({
 		id: `${crypto.randomUUID()}`,
 		username: "guest",
 	});
 	const [activeRoom, setActiveRoom] = useState(null);
+	const [gameStarted, setGameStarted] = useState(false);
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [showJoinModal, setShowJoinModal] = useState(false);
 	const socketRef = useRef(null);
@@ -116,6 +93,11 @@ export default function Race() {
 			}
 			if (message.type === "room:updated") {
 				setActiveRoom(message.payload);
+			}
+			if (message.type === "room:start") {
+				setActiveRoom(message.payload);
+				setGameStarted(true);
+				return;
 			}
 		};
 
@@ -260,8 +242,19 @@ export default function Race() {
 	};
 
 	if (activeRoom) {
+		if (gameStarted) {
+			return (
+				<LiveRace
+					room={activeRoom}
+					userData={userData}
+					socketRef={socketRef}
+				/>
+			);
+		}
+
 		return (
 			<RoomLobby
+				socketRef={socketRef}
 				room={activeRoom}
 				userData={userData}
 				onLeave={handleLeaveRoom}

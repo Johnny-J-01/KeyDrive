@@ -1,10 +1,16 @@
 import { Users, Copy, LogOut, Play, Lock, Globe, Check } from "lucide-react";
 import { useState } from "react";
+import LiveRace from "./LiveRace";
 
-export default function RoomLobby({ room, userData, onLeave, onDelete }) {
+export default function RoomLobby({
+	socketRef,
+	room,
+	userData,
+	onLeave,
+	onDelete,
+}) {
 	const [copied, setCopied] = useState(false);
 	const isAdmin = room.adminId === userData.id;
-
 	const players =
 		room.players?.length > 0
 			? room.players
@@ -22,6 +28,17 @@ export default function RoomLobby({ room, userData, onLeave, onDelete }) {
 		} catch (error) {
 			console.error("Failed to copy room code:", error);
 		}
+	};
+
+	const handleStartRace = () => {
+		socketRef.current?.send(
+			JSON.stringify({
+				type: "room:start",
+				payload: {
+					roomId: room.id,
+				},
+			}),
+		);
 	};
 
 	return (
@@ -146,29 +163,20 @@ export default function RoomLobby({ room, userData, onLeave, onDelete }) {
 					</div>
 				</div>
 
-				<div className="bg-surface border border-borderMain rounded-xl p-6">
-					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-						{/* <div>
-							<h3 className="font-bold text-white mb-1">
-								Ready to race?
-							</h3>
-
-							<p className="text-sm text-textMuted">
-								Wait for your friends to join, then start the
-								race.
-							</p>
-						</div> */}
-
-						<button
-							disabled={players.length < 1}
-							className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-							// onClick={handleStartRace}
-						>
-							<Play className="w-4 h-4" />
-							Start Race
-						</button>
+				{isAdmin && (
+					<div className="bg-surface border border-borderMain rounded-xl p-6">
+						<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+							<button
+								disabled={players.length < 1}
+								className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+								onClick={handleStartRace}
+							>
+								<Play className="w-4 h-4" />
+								Start Race
+							</button>
+						</div>
 					</div>
-				</div>
+				)}
 			</div>
 		</div>
 	);

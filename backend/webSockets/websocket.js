@@ -116,12 +116,34 @@ export const setUpWebSocketServer = (wss) => {
                 const response = JSON.stringify({
                     type: "room:deleted",
                     payload: parsedMessage.payload.roomId,
-                }); 
+                });
                 wss.clients.forEach((client) => {
                     if (client.readyState === WebSocket.OPEN) {
                         client.send(response);
-                    }       
-                }); 
+                    }
+                });
+            }
+            if (parsedMessage.type === "room:start") {
+                const { roomId } = parsedMessage.payload;
+
+                const room = rooms.find((room) => room.id === roomId);
+
+                if (!room) {
+                    return;
+                }
+
+                room.status = "running";
+
+                const response = JSON.stringify({
+                    type: "room:start",
+                    payload: room,
+                });
+
+                wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(response);
+                    }
+                });
             }
         });
     });

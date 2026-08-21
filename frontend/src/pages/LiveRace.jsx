@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import RaceGame from "../components/RaceGame";
 
-export default function LiveRace({ room, userData, onLeave }) {
-	const [countdown, setCountdown] = useState(60);
+export default function LiveRace({ room, userData, socketRef }) {
+	const [countdown, setCountdown] = useState(5);
 	const [isStarted, setIsStarted] = useState(false);
-
 	// Real Typing State
 	const [passage, setPassage] = useState(
 		"the secret of getting ahead is getting started",
@@ -78,29 +77,21 @@ export default function LiveRace({ room, userData, onLeave }) {
 		return () => clearInterval(timer);
 	}, [isStarted]);
 
-	const players = [
-		{
-			id: "temporary-opponent-1",
-			username: "Opponent 1",
-			progress: isStarted ? op1Progress : 0,
-			wpm: 120,
-			accuracy: 95,
-		},
-		{
-			id: currentUserId,
-			username: userData?.username ?? "You",
-			progress: isStarted ? myProgress : 0,
-			wpm: myWpm,
-			accuracy: myAccuracy,
-		},
-		{
-			id: "temporary-opponent-2",
-			username: "Opponent 2",
-			progress: isStarted ? op2Progress : 0,
-			wpm: 90,
-			accuracy: 92,
-		},
-	];
+	const players = room?.players;
+
+	const onLeave = () => {
+		if (room) {
+			socketRef.current?.send(
+				JSON.stringify({
+					type: "room:leave",
+					payload: {
+						roomId: room.id,
+						userData: userData,
+					},
+				}),
+			);
+		}
+	};
 
 	return (
 		<div className="w-full flex flex-col gap-6">
