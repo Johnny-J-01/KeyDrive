@@ -100,12 +100,18 @@ export default function Race() {
 			if (message.type === "room:deleted") {
 				setRooms((currentRooms) =>
 					currentRooms.filter(
-						(room) => room.id !== message.payload.roomId,
+						(room) => room.id !== message.payload.id,
 					),
 				);
 				setActiveRoom(null);
 			}
 			if (message.type === "room:joined") {
+				setActiveRoom(message.payload);
+			}
+			if (message.type === "room:left") {
+				setActiveRoom(null);
+			}
+			if (message.type === "room:updated") {
 				setActiveRoom(message.payload);
 			}
 		};
@@ -210,13 +216,13 @@ export default function Race() {
 			],
 		};
 
-		setActiveRoom(updatedRoom);
 		socketRef.current?.send(
 			JSON.stringify({
 				type: "room:join",
 				payload: { roomId: room.id, user: userData },
 			}),
 		);
+		setActiveRoom(updatedRoom);
 
 		return {
 			success: true,
@@ -225,17 +231,16 @@ export default function Race() {
 
 	const handleLeaveRoom = () => {
 		if (activeRoom) {
-			const isAdmin = activeRoom.adminId === userData.id;
 			socketRef.current?.send(
 				JSON.stringify({
-					type: isAdmin ? "room:delete" : "room:leave",
-					payload: isAdmin
-						? { roomId: activeRoom.id, adminId: userData.id }
-						: { roomId: activeRoom.id, userId: userData.id },
+					type: "room:leave",
+					payload: {
+						roomId: activeRoom.id,
+						userData: userData,
+					},
 				}),
 			);
 		}
-		setActiveRoom(null);
 	};
 
 	const handleDeleteRoom = () => {

@@ -28,16 +28,14 @@ export const setUpWebSocketServer = (wss) => {
             }
             if (parsedMessage.type === "room:join") {
                 const findRoomToJoin = rooms.find((r) => {
-                    return r.id === parsedMessage.payload.roomId 
+                    return r.id === parsedMessage.payload.roomId
                 });
-                console.log("current rooms list: ", rooms);
-                console.log("Find room to join: ", findRoomToJoin);
                 if (findRoomToJoin) {
                     findRoomToJoin.players.push(parsedMessage.payload.user);
                     findRoomToJoin.playerCount = findRoomToJoin.playerCount + 1;
                     const response = JSON.stringify({
                         type: "room:joined",
-                        payload: findRoomToJoin,  
+                        payload: findRoomToJoin,
                     });
                     wss.clients.forEach((client) => {
                         if (client.readyState === WebSocket.OPEN) {
@@ -45,7 +43,61 @@ export const setUpWebSocketServer = (wss) => {
                         }
                     });
                 }
-                console.log("final find room to join: ", findRoomToJoin);
+            }
+            if (parsedMessage.type === "room:leave") {
+                const findRoomToLeave = rooms.find((r) => {
+                    return r.id === parsedMessage.payload.roomId
+                });
+                console.log("find room to leave: ", findRoomToLeave);
+                if (findRoomToLeave) {
+                    const isAdmin = findRoomToLeave.adminId === parsedMessage.payload.userData.id;
+
+                    if (isAdmin) {
+                        const index = rooms.findIndex((r) => r.id === parsedMessage.payload.roomId);
+                        if (index !== -1) {
+                            rooms.splice(index, 1);
+                        }
+                        const response = JSON.stringify({
+                            type: "room:deleted",
+                            payload: findRoomToLeave,
+                        });
+                        wss.clients.forEach((client) => {
+                            if (client.readyState === WebSocket.OPEN) {
+                                client.send(response);
+                            }
+                        });
+                    }
+
+                    if (!isAdmin) {
+                        console.log("toLeaveroom players curretnly: ", findRoomToLeave.players);
+                        findRoomToLeave.players = findRoomToLeave.players.filter((player) => {
+                            return player.id !== parsedMessage.payload.userData.id;
+                        });
+                        findRoomToLeave.playerCount = findRoomToLeave.playerCount - 1;
+
+                        // for everyone else in the room: 
+                        const responseForEveryoneElse = JSON.stringify({
+                            type: "room:updated",
+                            payload: findRoomToLeave,
+                        });
+
+                        // for the player who just left
+                        const responseForPlayer = JSON.stringify({
+                            type: "room:left",
+                            payload: findRoomToLeave.id,
+                        });
+                        console.log("Final room data: ", findRoomToLeave);
+                        wss.clients.forEach((client) => {
+                            if (client.readyState === WebSocket.OPEN) {
+                                if (client === socket) {
+                                    client.send(responseForPlayer);
+                                } else {
+                                    client.send(responseForEveryoneElse);
+                                }
+                            }
+                        });
+                    }
+                }
             }
         });
     });
