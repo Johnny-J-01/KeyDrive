@@ -99,9 +99,7 @@ export default function Race() {
 			}
 			if (message.type === "room:deleted") {
 				setRooms((currentRooms) =>
-					currentRooms.filter(
-						(room) => room.id !== message.payload.id,
-					),
+					currentRooms.filter((room) => room.id !== message.payload),
 				);
 				setActiveRoom(null);
 			}
@@ -249,7 +247,10 @@ export default function Race() {
 		socketRef.current?.send(
 			JSON.stringify({
 				type: "room:delete",
-				payload: { roomId: activeRoom.id, adminId: userData.id },
+				payload: {
+					roomId: activeRoom.id,
+					userData: userData,
+				},
 			}),
 		);
 		setActiveRoom(null);

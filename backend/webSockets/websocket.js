@@ -59,7 +59,7 @@ export const setUpWebSocketServer = (wss) => {
                         }
                         const response = JSON.stringify({
                             type: "room:deleted",
-                            payload: findRoomToLeave,
+                            payload: findRoomToLeave.id,
                         });
                         wss.clients.forEach((client) => {
                             if (client.readyState === WebSocket.OPEN) {
@@ -98,6 +98,21 @@ export const setUpWebSocketServer = (wss) => {
                         });
                     }
                 }
+            }
+            if (parsedMessage.type === "room:delete") {
+                const index = rooms.findIndex((r) => r.id === parsedMessage.payload.roomId);
+                if (index !== -1) {
+                    rooms.splice(index, 1);
+                }
+                const response = JSON.stringify({
+                    type: "room:deleted",
+                    payload: parsedMessage.payload.roomId,
+                }); 
+                wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(response);
+                    }       
+                }); 
             }
         });
     });
