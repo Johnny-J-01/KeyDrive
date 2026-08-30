@@ -29,7 +29,7 @@ export default function Navbar() {
 	}
 
 	return (
-		<nav className="border-b border-borderMain sticky top-0 bg-background/90 backdrop-blur z-50">
+		<nav className="border-b border-borderMain sticky top-0 bg-black backdrop-blur z-50">
 			<div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
 				<Link to="/" className="flex items-center gap-2 group">
 					<div className="bg-primary/10 p-2 rounded-lg group-hover:bg-primary/20 transition-colors">

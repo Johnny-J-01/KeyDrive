@@ -16,7 +16,7 @@ import LiveRace from "./pages/LiveRace";
 
 function App() {
 	return (
-		<div className="min-h-screen flex flex-col bg-background text-textMain font-sans selection:bg-primary/30 selection:text-white">
+		<div className="min-h-screen flex flex-col bg-black text-textMain font-sans selection:bg-primary/30 selection:text-white">
 			<Navbar />
 			<main className="flex-grow max-w-6xl w-full mx-auto p-6">
 				<Routes>
