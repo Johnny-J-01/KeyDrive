@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F1 Racing Buggy - Ultra Bright Red - Three.js</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #060709;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #exportBtn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 14px 26px;
+      background: linear-gradient(135deg, #ff001a 0%, #cc0014 100%);
+      color: #ffffff;
+      border: 1px solid #ff4d61;
+      border-radius: 4px;
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 0 25px rgba(255, 0, 26, 0.6);
+      transition: all 0.25s ease;
+    }
+    #exportBtn:hover {
+      background: linear-gradient(135deg, #ff334b 0%, #ff001a 100%);
+      box-shadow: 0 0 35px rgba(255, 0, 26, 0.9);
+      transform: translateY(-2px);
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <button id="exportBtn">Download f1_bright_red_buggy.glb</button>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+    // 1. Scene & Camera Setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x060709);
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(5.5, 2.2, 6.2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, 0.5, 0);
+
+    // 2. High Intensity Studio Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    scene.add(ambientLight);
+
+    const mainLight = new THREE.DirectionalLight(0xffffff, 3.5);
+    mainLight.position.set(8, 14, 8);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 2048;
+    mainLight.shadow.mapSize.height = 2048;
+    scene.add(mainLight);
+
+    const specularLight = new THREE.DirectionalLight(0xff334b, 2.5);
+    specularLight.position.set(-8, 6, -8);
+    scene.add(specularLight);
+
+    const fillLight = new THREE.PointLight(0xffffff, 2.0, 12);
+    fillLight.position.set(2, 2, 3);
+    scene.add(fillLight);
+
+    // 3. Ground Mirror Grid
+    const gridHelper = new THREE.GridHelper(30, 30, 0xff001a, 0x141722);
+    scene.add(gridHelper);
+
+    // 4. Pixelation Effect
+    const composer = new EffectComposer(renderer);
+    const renderPixelatedPass = new RenderPixelatedPass(3, scene, camera);
+    composer.addPass(renderPixelatedPass);
+
+    // 5. Procedural F1 Bright Red Buggy Generator
+    function buildF1Buggy() {
+      const buggyGroup = new THREE.Group();
+      buggyGroup.name = "F1_Bright_Red_Buggy";
+
+      // --- MATERIALS ---
+      const ultraBrightRedMat = new THREE.MeshStandardMaterial({ 
+        color: 0xff001a, // Ultra Vibrant Neon/Racing Red
+        metalness: 0.4, 
+        roughness: 0.12 
+      });
+
+      const carbonFiberMat = new THREE.MeshStandardMaterial({ 
+        color: 0x0c0d10, // Matte Raw Carbon Fiber
+        metalness: 0.9, 
+        roughness: 0.3 
+      });
+
+      const whiteLiveryMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, // White Racing Stripes & Accent Panels
+        metalness: 0.5, 
+        roughness: 0.2 
+      });
+
+      const yellowAccentMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffea00, // Racing Yellow Details
+        metalness: 0.8, 
+        roughness: 0.2 
+      });
+
+      const chromeMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, 
+        metalness: 0.98, 
+        roughness: 0.05 
+      });
+
+      const tireMat = new THREE.MeshStandardMaterial({ 
+        color: 0x08080a, 
+        roughness: 0.95 
+      });
+
+      const haloMat = new THREE.MeshStandardMaterial({ 
+        color: 0x1a1a1f, 
+        metalness: 0.95, 
+        roughness: 0.2 
+      });
+
+      const redGlowMat = new THREE.MeshStandardMaterial({ 
+        color: 0xff001a, 
+        emissive: 0xff001a, 
+        emissiveIntensity: 4.0 
+      });
+
+      function createTube(p1, p2, radius = 0.035, mat = carbonFiberMat) {
+        const dir = new THREE.Vector3().subVectors(p2, p1);
+        const len = dir.length();
+        const geo = new THREE.CylinderGeometry(radius, radius, len, 8);
+        const mesh = new THREE.Mesh(geo, mat);
+        
+        mesh.position.copy(p1).add(p2).multiplyScalar(0.5);
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+        mesh.castShadow = true;
+        return mesh;
+      }
+
+      // --- LOW CHASSIS & UNDERGLOW ---
+      const floorGeo = new THREE.BoxGeometry(1.3, 0.05, 3.4);
+      const floor = new THREE.Mesh(floorGeo, carbonFiberMat);
+      floor.position.set(0, 0.25, 0);
+      floor.castShadow = true;
+      buggyGroup.add(floor);
+
+      const underglowGeo = new THREE.BoxGeometry(1.1, 0.02, 3.2);
+      const underglow = new THREE.Mesh(underglowGeo, redGlowMat);
+      underglow.position.set(0, 0.21, 0);
+      buggyGroup.add(underglow);
+
+      // --- F1 NOSE CONE & FRONT WING ---
+      const noseGeo = new THREE.ConeGeometry(0.35, 1.8, 4);
+      noseGeo.rotateX(Math.PI / 2);
+      noseGeo.scale(1.0, 0.35, 1.0);
+      const nose = new THREE.Mesh(noseGeo, ultraBrightRedMat);
+      nose.position.set(0, 0.48, 1.45);
+      nose.castShadow = true;
+      buggyGroup.add(nose);
+
+      // Nose White Stripe
+      const stripeGeo = new THREE.BoxGeometry(0.12, 0.04, 1.6);
+      const stripe = new THREE.Mesh(stripeGeo, whiteLiveryMat);
+      stripe.position.set(0, 0.56, 1.45);
+      stripe.rotation.x = -0.06;
+      buggyGroup.add(stripe);
+
+      // F1 Multi-Blade Front Wing
+      const frontWingMainGeo = new THREE.BoxGeometry(2.1, 0.03, 0.35);
+      const frontWingMain = new THREE.Mesh(frontWingMainGeo, carbonFiberMat);
+      frontWingMain.position.set(0, 0.28, 2.25);
+      frontWingMain.castShadow = true;
+
+      const frontFlapGeo = new THREE.BoxGeometry(2.0, 0.02, 0.2);
+      const frontFlap = new THREE.Mesh(frontFlapGeo, ultraBrightRedMat);
+      frontFlap.position.set(0, 0.32, 2.2);
+      frontFlap.rotation.x = -0.15;
+
+      // Front Endplates
+      [-1.05, 1.05].forEach(x => {
+        const endplateGeo = new THREE.BoxGeometry(0.03, 0.28, 0.55);
+        const endplate = new THREE.Mesh(endplateGeo, ultraBrightRedMat);
+        endplate.position.set(x, 0.38, 2.25);
+        buggyGroup.add(endplate);
+      });
+
+      buggyGroup.add(frontWingMain, frontFlap);
+
+      // --- F1 SIDEPODS & AIR INTAKES ---
+      [-0.62, 0.62].forEach(x => {
+        const sidepodGeo = new THREE.BoxGeometry(0.48, 0.38, 1.5);
+        const sidepod = new THREE.Mesh(sidepodGeo, ultraBrightRedMat);
+        sidepod.position.set(x, 0.48, 0.0);
+        sidepod.castShadow = true;
+
+        // Black Intake Opening Front
+        const intakeGeo = new THREE.BoxGeometry(0.44, 0.32, 0.08);
+        const intake = new THREE.Mesh(intakeGeo, carbonFiberMat);
+        intake.position.set(x, 0.48, 0.72);
+
+        // White Livery Accent Strip
+        const accentGeo = new THREE.BoxGeometry(0.02, 0.39, 1.4);
+        const accent = new THREE.Mesh(accentGeo, whiteLiveryMat);
+        accent.position.set(x > 0 ? x + 0.23 : x - 0.23, 0.48, 0.0);
+
+        buggyGroup.add(sidepod, intake, accent);
+      });
+
+      // --- F1 COCKPIT & HALO PROTECTION ---
+      // Cockpit Opening
+      const cockpitGeo = new THREE.BoxGeometry(0.55, 0.25, 0.95);
+      const cockpit = new THREE.Mesh(cockpitGeo, carbonFiberMat);
+      cockpit.position.set(0, 0.55, 0.1);
+      buggyGroup.add(cockpit);
+
+      // Racing Seat & Harness
+      const seatGeo = new THREE.BoxGeometry(0.45, 0.65, 0.1);
+      const seat = new THREE.Mesh(seatGeo, carbonFiberMat);
+      seat.position.set(0, 0.62, -0.2);
+      seat.rotation.x = -0.3;
+
+      [-0.12, 0.12].forEach(bx => {
+        const beltGeo = new THREE.BoxGeometry(0.06, 0.6, 0.02);
+        const belt = new THREE.Mesh(beltGeo, yellowAccentMat);
+        belt.position.set(bx, 0.02, 0.06);
+        seat.add(belt);
+      });
+      buggyGroup.add(seat);
+
+      // Steering Yoke with Buttons
+      const yokeGeo = new THREE.BoxGeometry(0.24, 0.12, 0.03);
+      const yoke = new THREE.Mesh(yokeGeo, carbonFiberMat);
+      yoke.position.set(0, 0.75, 0.22);
+      yoke.rotation.x = 0.4;
+      buggyGroup.add(yoke);
+
+      // Titanium Halo Structure
+      const haloCenterPillar = createTube(new THREE.Vector3(0, 0.72, 0.55), new THREE.Vector3(0, 0.98, 0.38), 0.035, haloMat);
+      const haloRingLeft = createTube(new THREE.Vector3(0, 0.98, 0.38), new THREE.Vector3(-0.32, 0.92, -0.28), 0.035, haloMat);
+      const haloRingRight = createTube(new THREE.Vector3(0, 0.98, 0.38), new THREE.Vector3(0.32, 0.92, -0.28), 0.035, haloMat);
+      const haloRearCross = createTube(new THREE.Vector3(-0.32, 0.92, -0.28), new THREE.Vector3(0.32, 0.92, -0.28), 0.035, haloMat);
+      buggyGroup.add(haloCenterPillar, haloRingLeft, haloRingRight, haloRearCross);
+
+      // --- ENGINE COVER & SHARK FIN ---
+      const engineCoverGeo = new THREE.ConeGeometry(0.5, 1.4, 4);
+      engineCoverGeo.rotateX(-Math.PI / 2);
+      engineCoverGeo.scale(0.9, 0.45, 1.0);
+      const engineCover = new THREE.Mesh(engineCoverGeo, ultraBrightRedMat);
+      engineCover.position.set(0, 0.65, -0.85);
+      engineCover.castShadow = true;
+      buggyGroup.add(engineCover);
+
+      // F1 Shark Fin Stabilizer
+      const finShape = new THREE.Shape();
+      finShape.moveTo(0, 0);
+      finShape.lineTo(0, 0.45);
+      finShape.lineTo(-1.1, 0.55);
+      finShape.lineTo(-1.1, 0);
+      finShape.closePath();
+
+      const extrudeSettings = { depth: 0.03, bevelEnabled: false };
+      const finGeo = new THREE.ExtrudeGeometry(finShape, extrudeSettings);
+      const fin = new THREE.Mesh(finGeo, ultraBrightRedMat);
+      fin.position.set(-0.015, 0.75, -0.3);
+      fin.castShadow = true;
+      buggyGroup.add(fin);
+
+      // --- LARGE F1 REAR WING (DRS) ---
+      const rearWingMainGeo = new THREE.BoxGeometry(1.8, 0.04, 0.45);
+      const rearWingMain = new THREE.Mesh(rearWingMainGeo, ultraBrightRedMat);
+      rearWingMain.position.set(0, 1.35, -1.65);
+      rearWingMain.rotation.x = 0.05;
+      rearWingMain.castShadow = true;
+
+      // DRS Flap
+      const drsFlapGeo = new THREE.BoxGeometry(1.78, 0.02, 0.22);
+      const drsFlap = new THREE.Mesh(drsFlapGeo, whiteLiveryMat);
+      drsFlap.position.set(0, 1.42, -1.58);
+      drsFlap.rotation.x = 0.12;
+
+      // Endplates
+      [-0.92, 0.92].forEach(x => {
+        const endplateGeo = new THREE.BoxGeometry(0.03, 0.65, 0.72);
+        const endplate = new THREE.Mesh(endplateGeo, ultraBrightRedMat);
+        endplate.position.set(x, 1.25, -1.65);
+        buggyGroup.add(endplate);
+      });
+
+      // Twin Central Wing Pillars
+      buggyGroup.add(createTube(new THREE.Vector3(-0.18, 0.5, -1.5), new THREE.Vector3(-0.18, 1.35, -1.65), 0.03, carbonFiberMat));
+      buggyGroup.add(createTube(new THREE.Vector3(0.18, 0.5, -1.5), new THREE.Vector3(0.18, 1.35, -1.65), 0.03, carbonFiberMat));
+      buggyGroup.add(rearWingMain, drsFlap);
+
+      // --- PUSH-ROD SUSPENSION & OPEN WHEELS ---
+      function buildF1WheelAssembly(x, z, radius, width, isFront) {
+        const group = new THREE.Group();
+
+        // Offroad/Slick Hybrid Tire
+        const tireGeo = new THREE.CylinderGeometry(radius, radius, width, 24);
+        tireGeo.rotateZ(Math.PI / 2);
+        const tire = new THREE.Mesh(tireGeo, tireMat);
+        tire.castShadow = true;
+        group.add(tire);
+
+        // Center-Lock Wheel Cover
+        const coverGeo = new THREE.CylinderGeometry(radius * 0.7, radius * 0.68, width * 1.02, 16);
+        coverGeo.rotateZ(Math.PI / 2);
+        const cover = new THREE.Mesh(coverGeo, ultraBrightRedMat);
+        group.add(cover);
+
+        // Yellow Rim Lip Stripe
+        const lipGeo = new THREE.TorusGeometry(radius * 0.72, 0.018, 8, 24);
+        const lip = new THREE.Mesh(lipGeo, yellowAccentMat);
+        lip.position.set(x > 0 ? -width * 0.51 : width * 0.51, 0, 0);
+        lip.rotation.y = Math.PI / 2;
+        group.add(lip);
+
+        // Central Nut
+        const nutGeo = new THREE.CylinderGeometry(radius * 0.18, radius * 0.18, width * 1.08, 8);
+        nutGeo.rotateZ(Math.PI / 2);
+        const nut = new THREE.Mesh(nutGeo, chromeMat);
+        group.add(nut);
+
+        // Carbon Push-Rod Wishbone Suspensions
+        const wishbone1 = createTube(new THREE.Vector3(0, 0, 0), new THREE.Vector3(x > 0 ? -0.55 : 0.55, 0.12, 0.22), 0.025, carbonFiberMat);
+        const wishbone2 = createTube(new THREE.Vector3(0, 0, 0), new THREE.Vector3(x > 0 ? -0.55 : 0.55, 0.12, -0.22), 0.025, carbonFiberMat);
+        const pushRod = createTube(new THREE.Vector3(0, -0.1, 0), new THREE.Vector3(x > 0 ? -0.45 : 0.45, 0.35, 0), 0.028, yellowAccentMat);
+        group.add(wishbone1, wishbone2, pushRod);
+
+        group.position.set(x, radius, z);
+        return group;
+      }
+
+      // F1 Wheel Placements
+      buggyGroup.add(buildF1WheelAssembly(-1.12, 1.4, 0.44, 0.48, true));
+      buggyGroup.add(buildF1WheelAssembly(1.12, 1.4, 0.44, 0.48, true));
+      buggyGroup.add(buildF1WheelAssembly(-1.22, -1.2, 0.54, 0.62, false));
+      buggyGroup.add(buildF1WheelAssembly(1.22, -1.2, 0.54, 0.62, false));
+
+      return buggyGroup;
+    }
+
+    const buggyModel = buildF1Buggy();
+    scene.add(buggyModel);
+
+    // 6. GLB Exporter
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const exporter = new GLTFExporter();
+      exporter.parse(
+        buggyModel,
+        (gltf) => {
+          const blob = new Blob([gltf], { type: 'application/octet-stream' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'f1_bright_red_buggy.glb';
+          link.click();
+        },
+        (error) => console.error('Export error:', error),
+        { binary: true }
+      );
+    });
+
+    // 7. Render Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      composer.render();
+    }
+    animate();
+
+    // 8. Window Resize Handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

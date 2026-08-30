@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enhanced Cyber Dune Buggy - Three.js</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #0f1117;
+      font-family: monospace;
+    }
+    #exportBtn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 12px 22px;
+      background: #00d2d3;
+      color: #0f1117;
+      border: 2px solid #00a8ff;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 4px 14px rgba(0, 210, 211, 0.4);
+      transition: all 0.2s ease;
+    }
+    #exportBtn:hover {
+      background: #54a0ff;
+      color: #ffffff;
+      transform: translateY(-2px);
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <button id="exportBtn">Download cyber_buggy.glb</button>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+    // 1. Scene Setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f1117);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(4.5, 3.2, 5.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, 0.6, 0);
+
+    // 2. Lighting System
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambientLight);
+
+    const mainSun = new THREE.DirectionalLight(0xfffaed, 2.5);
+    mainSun.position.set(6, 12, 8);
+    mainSun.castShadow = true;
+    mainSun.shadow.mapSize.width = 2048;
+    mainSun.shadow.mapSize.height = 2048;
+    scene.add(mainSun);
+
+    // Rim light for cyber edge highlights
+    const rimLight = new THREE.DirectionalLight(0x00d2d3, 1.5);
+    rimLight.position.set(-8, 5, -8);
+    scene.add(rimLight);
+
+    // 3. Ground Grid
+    const gridHelper = new THREE.GridHelper(30, 30, 0x00d2d3, 0x1e272e);
+    scene.add(gridHelper);
+
+    // 4. Pixelation Effect
+    const composer = new EffectComposer(renderer);
+    const renderPixelatedPass = new RenderPixelatedPass(4, scene, camera);
+    composer.addPass(renderPixelatedPass);
+
+    // 5. Enhanced Cyber Buggy Procedural Generator
+    function buildCyberBuggy() {
+      const buggyGroup = new THREE.Group();
+      buggyGroup.name = "Cyber_Dune_Buggy";
+
+      // --- HIGH-CONTRAST MATERIAL PALETTE ---
+      const bodyMat = new THREE.MeshStandardMaterial({ 
+        color: 0x00d2d3, // Electric Turquoise
+        metalness: 0.6, 
+        roughness: 0.25 
+      });
+      
+      const accentMat = new THREE.MeshStandardMaterial({ 
+        color: 0xff4757, // Neon Crimson Accent
+        metalness: 0.4, 
+        roughness: 0.3 
+      });
+      
+      const frameMat = new THREE.MeshStandardMaterial({ 
+        color: 0x1e272e, // Satin Dark Charcoal
+        metalness: 0.5, 
+        roughness: 0.5 
+      });
+      
+      const chromeMat = new THREE.MeshStandardMaterial({ 
+        color: 0xf5f6fa, // Polished Chrome
+        metalness: 0.95, 
+        roughness: 0.1 
+      });
+      
+      const springMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffa801, // Neon Gold Springs
+        metalness: 0.7, 
+        roughness: 0.2 
+      });
+      
+      const tireMat = new THREE.MeshStandardMaterial({ 
+        color: 0x0f1117, // Deep Off-road Rubber
+        roughness: 0.95 
+      });
+      
+      const seatMat = new THREE.MeshStandardMaterial({ 
+        color: 0x2f3542, // Dark Leather
+        roughness: 0.7 
+      });
+      
+      const ledBlueMat = new THREE.MeshStandardMaterial({ 
+        color: 0x70a1ff, 
+        emissive: 0x70a1ff, 
+        emissiveIntensity: 2.0 
+      });
+      
+      const headlightMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, 
+        emissive: 0xfff0a5, 
+        emissiveIntensity: 1.8 
+      });
+
+      // Tube helper
+      function createTube(p1, p2, radius = 0.045, mat = frameMat) {
+        const dir = new THREE.Vector3().subVectors(p2, p1);
+        const len = dir.length();
+        const geo = new THREE.CylinderGeometry(radius, radius, len, 8);
+        const mesh = new THREE.Mesh(geo, mat);
+        
+        mesh.position.copy(p1).add(p2).multiplyScalar(0.5);
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+        mesh.castShadow = true;
+        return mesh;
+      }
+
+      // --- CHASSIS & FLOOR PANELS ---
+      const floorGeo = new THREE.BoxGeometry(1.3, 0.08, 2.7);
+      const floor = new THREE.Mesh(floorGeo, accentMat);
+      floor.position.set(0, 0.38, 0);
+      floor.castShadow = true;
+      buggyGroup.add(floor);
+
+      // --- MULTI-POINT ROLL CAGE & FRAME ---
+      const p = {
+        fLL: new THREE.Vector3(-0.65, 0.4, 1.4),  fLR: new THREE.Vector3(0.65, 0.4, 1.4),
+        fUL: new THREE.Vector3(-0.55, 0.95, 0.7), fUR: new THREE.Vector3(0.55, 0.95, 0.7),
+        rUL: new THREE.Vector3(-0.65, 1.25, -0.4),rUR: new THREE.Vector3(0.65, 1.25, -0.4),
+        rLL: new THREE.Vector3(-0.65, 0.4, -1.4), rLR: new THREE.Vector3(0.65, 0.4, -1.4)
+      };
+
+      // Base Perimeter
+      buggyGroup.add(createTube(p.fLL, p.fLR));
+      buggyGroup.add(createTube(p.rLL, p.rLR));
+      buggyGroup.add(createTube(p.fLL, p.rLL));
+      buggyGroup.add(createTube(p.fLR, p.rLR));
+
+      // Roll Cage Pillars & Roof
+      buggyGroup.add(createTube(p.fLL, p.fUL)); buggyGroup.add(createTube(p.fLR, p.fUR));
+      buggyGroup.add(createTube(p.fUL, p.rUL)); buggyGroup.add(createTube(p.fUR, p.rUR));
+      buggyGroup.add(createTube(p.rUL, p.rLL)); buggyGroup.add(createTube(p.rUR, p.rLR));
+      buggyGroup.add(createTube(p.fUL, p.fUR)); buggyGroup.add(createTube(p.rUL, p.rUR));
+
+      // Diagonal Cross Bracing
+      buggyGroup.add(createTube(p.rUL, p.fUR, 0.035));
+      buggyGroup.add(createTube(p.fUL, p.rUR, 0.035));
+
+      // --- AERODYNAMIC BODY PANELS & FENDERS ---
+      // Front Nose
+      const hoodGeo = new THREE.BoxGeometry(1.1, 0.15, 0.9);
+      const hood = new THREE.Mesh(hoodGeo, bodyMat);
+      hood.position.set(0, 0.65, 1.0);
+      hood.rotation.x = 0.15;
+      hood.castShadow = true;
+      buggyGroup.add(hood);
+
+      // Front Wheel Fenders (Mudguards)
+      [-0.8, 0.8].forEach(x => {
+        const fenderGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.38, 8, 1, false, 0, Math.PI);
+        const fender = new THREE.Mesh(fenderGeo, bodyMat);
+        fender.rotation.set(0, 0, Math.PI / 2);
+        fender.position.set(x, 0.72, 1.05);
+        fender.castShadow = true;
+        buggyGroup.add(fender);
+      });
+
+      // Side Impact Panels
+      [-0.66, 0.66].forEach(x => {
+        const sidePanelGeo = new THREE.BoxGeometry(0.04, 0.45, 1.1);
+        const sidePanel = new THREE.Mesh(sidePanelGeo, bodyMat);
+        sidePanel.position.set(x, 0.62, 0.1);
+        sidePanel.castShadow = true;
+        buggyGroup.add(sidePanel);
+      });
+
+      // --- ROOF LED LIGHTBAR ---
+      const lightbarBaseGeo = new THREE.BoxGeometry(1.1, 0.12, 0.15);
+      const lightbarBase = new THREE.Mesh(lightbarBaseGeo, frameMat);
+      lightbarBase.position.set(0, 1.32, 0.65);
+      buggyGroup.add(lightbarBase);
+
+      for (let i = -0.4; i <= 0.4; i += 0.2) {
+        const ledGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.08, 12);
+        ledGeo.rotateX(Math.PI / 2);
+        const led = new THREE.Mesh(ledGeo, ledBlueMat);
+        led.position.set(i, 1.32, 0.72);
+        buggyGroup.add(led);
+      }
+
+      // --- COCKPIT INTERIOR ---
+      // Bucket Seats (Driver & Passenger)
+      [-0.3, 0.3].forEach(x => {
+        const seatBackGeo = new THREE.BoxGeometry(0.48, 0.7, 0.12);
+        const seatBack = new THREE.Mesh(seatBackGeo, seatMat);
+        seatBack.position.set(x, 0.78, -0.25);
+        seatBack.rotation.x = -0.15;
+
+        // Harness Strips
+        const harnessGeo = new THREE.BoxGeometry(0.08, 0.65, 0.02);
+        const harnessL = new THREE.Mesh(harnessGeo, accentMat);
+        harnessL.position.set(-0.12, 0.02, 0.07);
+        const harnessR = new THREE.Mesh(harnessGeo, accentMat);
+        harnessR.position.set(0.12, 0.02, 0.07);
+        seatBack.add(harnessL, harnessR);
+
+        const seatBottomGeo = new THREE.BoxGeometry(0.48, 0.1, 0.5);
+        const seatBottom = new THREE.Mesh(seatBottomGeo, seatMat);
+        seatBottom.position.set(x, 0.46, -0.1);
+
+        buggyGroup.add(seatBack, seatBottom);
+      });
+
+      // Dashboard & Steering Controls
+      const dashGeo = new THREE.BoxGeometry(1.1, 0.2, 0.25);
+      const dash = new THREE.Mesh(dashGeo, frameMat);
+      dash.position.set(0, 0.78, 0.45);
+      buggyGroup.add(dash);
+
+      const wheelColGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8);
+      const wheelCol = new THREE.Mesh(wheelColGeo, chromeMat);
+      wheelCol.rotation.set(-Math.PI / 4, 0, 0);
+      wheelCol.position.set(-0.3, 0.85, 0.3);
+      buggyGroup.add(wheelCol);
+
+      const wheelGeo = new THREE.TorusGeometry(0.11, 0.02, 8, 16);
+      const wheel = new THREE.Mesh(wheelGeo, accentMat);
+      wheel.rotation.set(Math.PI / 4, 0, 0);
+      wheel.position.set(-0.3, 0.98, 0.18);
+      buggyGroup.add(wheel);
+
+      // --- REAR TURBO ENGINE & DUAL EXHAUST ---
+      const engineGeo = new THREE.BoxGeometry(0.85, 0.55, 0.85);
+      const engine = new THREE.Mesh(engineGeo, chromeMat);
+      engine.position.set(0, 0.68, -1.05);
+      buggyGroup.add(engine);
+
+      // Top Air Intake Scoop
+      const intakeGeo = new THREE.CylinderGeometry(0.2, 0.12, 0.4, 8);
+      const intake = new THREE.Mesh(intakeGeo, bodyMat);
+      intake.position.set(0, 1.1, -0.95);
+      buggyGroup.add(intake);
+
+      // Dual Chrome Exhaust Pipes
+      [-0.25, 0.25].forEach(x => {
+        const pipeGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.8, 12);
+        pipeGeo.rotateX(-Math.PI / 3);
+        const pipe = new THREE.Mesh(pipeGeo, chromeMat);
+        pipe.position.set(x, 0.75, -1.45);
+        buggyGroup.add(pipe);
+      });
+
+      // --- DOUBLE WISHBONE SUSPENSION & WHEELS ---
+      function createWheelAssembly(x, z, radius, isFront) {
+        const group = new THREE.Group();
+
+        // Tire Tread
+        const tireGeo = new THREE.CylinderGeometry(radius, radius, 0.42, 16);
+        tireGeo.rotateZ(Math.PI / 2);
+        const tire = new THREE.Mesh(tireGeo, tireMat);
+        tire.castShadow = true;
+        group.add(tire);
+
+        // Rim Outer Ring & Spokes
+        const rimOuterGeo = new THREE.CylinderGeometry(radius * 0.68, radius * 0.68, 0.44, 12);
+        rimOuterGeo.rotateZ(Math.PI / 2);
+        const rimOuter = new THREE.Mesh(rimOuterGeo, accentMat);
+        group.add(rimOuter);
+
+        const hubGeo = new THREE.CylinderGeometry(radius * 0.35, radius * 0.35, 0.46, 8);
+        hubGeo.rotateZ(Math.PI / 2);
+        const hub = new THREE.Mesh(hubGeo, chromeMat);
+        group.add(hub);
+
+        // Wishbone Suspension Arms
+        const armGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.65, 6);
+        const upperArm = new THREE.Mesh(armGeo, chromeMat);
+        upperArm.rotation.set(0, 0, x > 0 ? -Math.PI / 6 : Math.PI / 6);
+        upperArm.position.set(x > 0 ? -0.3 : 0.3, 0.15, 0);
+        group.add(upperArm);
+
+        // Coilover Shock & Spring
+        const shockGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.7, 8);
+        const shock = new THREE.Mesh(shockGeo, chromeMat);
+        
+        const springGeo = new THREE.TorusKnotGeometry(0.065, 0.018, 64, 6, 2, 9);
+        const spring = new THREE.Mesh(springGeo, springMat);
+        spring.rotation.x = Math.PI / 2;
+
+        const suspGroup = new THREE.Group();
+        suspGroup.add(shock, spring);
+        suspGroup.rotation.z = x > 0 ? -Math.PI / 8 : Math.PI / 8;
+        suspGroup.position.set(x > 0 ? -0.25 : 0.25, 0.25, 0);
+        group.add(suspGroup);
+
+        group.position.set(x, radius, z);
+        return group;
+      }
+
+      buggyGroup.add(createWheelAssembly(-0.95, 1.05, 0.42, true));
+      buggyGroup.add(createWheelAssembly(0.95, 1.05, 0.42, true));
+      buggyGroup.add(createWheelAssembly(-1.05, -1.05, 0.5, false));
+      buggyGroup.add(createWheelAssembly(1.05, -1.05, 0.5, false));
+
+      // Main Headlights
+      [-0.42, 0.42].forEach(x => {
+        const lampGeo = new THREE.SphereGeometry(0.12, 12, 12);
+        const lamp = new THREE.Mesh(lampGeo, headlightMat);
+        lamp.position.set(x, 0.75, 1.48);
+        buggyGroup.add(lamp);
+      });
+
+      return buggyGroup;
+    }
+
+    const buggyModel = buildCyberBuggy();
+    scene.add(buggyModel);
+
+    // 6. GLB Exporter
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const exporter = new GLTFExporter();
+      exporter.parse(
+        buggyModel,
+        (gltf) => {
+          const blob = new Blob([gltf], { type: 'application/octet-stream' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'cyber_dune_buggy.glb';
+          link.click();
+        },
+        (error) => console.error('Export error:', error),
+        { binary: true }
+      );
+    });
+
+    // 7. Render Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      composer.render();
+    }
+    animate();
+
+    // 8. Resize Handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

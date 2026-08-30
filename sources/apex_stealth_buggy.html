@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apex Stealth Dune Buggy - Three.js</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #08090c;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #exportBtn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 14px 26px;
+      background: linear-gradient(135deg, #d4af37 0%, #aa7c11 100%);
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+      transition: all 0.25s ease;
+    }
+    #exportBtn:hover {
+      background: linear-gradient(135deg, #f3e5ab 0%, #d4af37 100%);
+      box-shadow: 0 0 30px rgba(212, 175, 55, 0.7);
+      transform: translateY(-2px);
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <button id="exportBtn">Download apex_buggy.glb</button>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+    // 1. Scene Setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x08090c);
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(5.2, 2.4, 6.0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, 0.5, 0);
+
+    // 2. High-Contrast Studio Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight(0xfff6e5, 3.0);
+    keyLight.position.set(7, 12, 6);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 2048;
+    keyLight.shadow.mapSize.height = 2048;
+    scene.add(keyLight);
+
+    // Neon Rim Backlight
+    const pinkRim = new THREE.DirectionalLight(0xff0055, 2.5);
+    pinkRim.position.set(-8, 6, -8);
+    scene.add(pinkRim);
+
+    // Gold Fill Side Light
+    const goldFill = new THREE.PointLight(0xd4af37, 2.0, 10);
+    goldFill.position.set(3, 1, 2);
+    scene.add(goldFill);
+
+    // 3. Ground Mirror Grid
+    const gridHelper = new THREE.GridHelper(30, 30, 0xd4af37, 0x161922);
+    scene.add(gridHelper);
+
+    // 4. Pixelation Effect
+    const composer = new EffectComposer(renderer);
+    const renderPixelatedPass = new RenderPixelatedPass(3, scene, camera);
+    composer.addPass(renderPixelatedPass);
+
+    // 5. Procedural Apex Stealth Buggy Generator
+    function buildApexBuggy() {
+      const buggyGroup = new THREE.Group();
+      buggyGroup.name = "Apex_Stealth_Buggy";
+
+      // --- LUXURY HYPERCAR MATERIAL PALETTE ---
+      const carbonBodyMat = new THREE.MeshStandardMaterial({ 
+        color: 0x111318, 
+        metalness: 0.8, 
+        roughness: 0.2 
+      });
+      
+      const goldMat = new THREE.MeshStandardMaterial({ 
+        color: 0xd4af37, // Metallic Anodized Gold
+        metalness: 0.95, 
+        roughness: 0.1 
+      });
+      
+      const crimsonMat = new THREE.MeshStandardMaterial({ 
+        color: 0x990011, // Deep Crimson Metallic
+        metalness: 0.7, 
+        roughness: 0.2 
+      });
+      
+      const chassisMat = new THREE.MeshStandardMaterial({ 
+        color: 0x050608, 
+        metalness: 0.9, 
+        roughness: 0.4 
+      });
+      
+      const chromeMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, 
+        metalness: 1.0, 
+        roughness: 0.05 
+      });
+      
+      const tireMat = new THREE.MeshStandardMaterial({ 
+        color: 0x08090a, 
+        roughness: 0.9 
+      });
+
+      const brakeCaliperMat = new THREE.MeshStandardMaterial({
+        color: 0xff002b,
+        metalness: 0.5,
+        roughness: 0.2
+      });
+
+      // Emissives
+      const magentaNeonMat = new THREE.MeshStandardMaterial({ 
+        color: 0xff0055, 
+        emissive: 0xff0055, 
+        emissiveIntensity: 4.0 
+      });
+      
+      const xenonLightMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, 
+        emissive: 0xe0f7fc, 
+        emissiveIntensity: 3.0 
+      });
+
+      // Structural Tube Helper
+      function createTube(p1, p2, radius = 0.04, mat = chassisMat) {
+        const dir = new THREE.Vector3().subVectors(p2, p1);
+        const len = dir.length();
+        const geo = new THREE.CylinderGeometry(radius, radius, len, 8);
+        const mesh = new THREE.Mesh(geo, mat);
+        
+        mesh.position.copy(p1).add(p2).multiplyScalar(0.5);
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+        mesh.castShadow = true;
+        return mesh;
+      }
+
+      // --- LOW STANCE CHASSIS & FLOOR ---
+      const floorGeo = new THREE.BoxGeometry(1.4, 0.06, 2.9);
+      const floor = new THREE.Mesh(floorGeo, carbonBodyMat);
+      floor.position.set(0, 0.28, 0);
+      floor.castShadow = true;
+      buggyGroup.add(floor);
+
+      // Underglow Light Bar Strip
+      const underglowGeo = new THREE.BoxGeometry(1.2, 0.02, 2.6);
+      const underglow = new THREE.Mesh(underglowGeo, magentaNeonMat);
+      underglow.position.set(0, 0.24, 0);
+      buggyGroup.add(underglow);
+
+      // --- AGGRESSIVE FASTBACK ROLL CAGE ---
+      const p = {
+        fLL: new THREE.Vector3(-0.7, 0.3, 1.4),  fLR: new THREE.Vector3(0.7, 0.3, 1.4),
+        fUL: new THREE.Vector3(-0.5, 0.82, 0.6), fUR: new THREE.Vector3(0.5, 0.82, 0.6),
+        rUL: new THREE.Vector3(-0.55, 1.05, -0.6),rUR: new THREE.Vector3(0.55, 1.05, -0.6),
+        rLL: new THREE.Vector3(-0.7, 0.3, -1.5), rLR: new THREE.Vector3(0.7, 0.3, -1.5)
+      };
+
+      // Base Perimeter
+      buggyGroup.add(createTube(p.fLL, p.fLR, 0.045, goldMat));
+      buggyGroup.add(createTube(p.rLL, p.rLR, 0.045, goldMat));
+      buggyGroup.add(createTube(p.fLL, p.rLL, 0.045, goldMat));
+      buggyGroup.add(createTube(p.fLR, p.rLR, 0.045, goldMat));
+
+      // Cage Bars
+      buggyGroup.add(createTube(p.fLL, p.fUL)); buggyGroup.add(createTube(p.fLR, p.fUR));
+      buggyGroup.add(createTube(p.fUL, p.rUL)); buggyGroup.add(createTube(p.fUR, p.rUR));
+      buggyGroup.add(createTube(p.rUL, p.rLL)); buggyGroup.add(createTube(p.rUR, p.rLR));
+      buggyGroup.add(createTube(p.fUL, p.fUR, 0.035, goldMat));
+      buggyGroup.add(createTube(p.rUL, p.rUR, 0.035, goldMat));
+
+      // --- STEALTH NOSE & SHARP HOOD ---
+      const hoodGeo = new THREE.ConeGeometry(0.7, 1.2, 4);
+      hoodGeo.rotateX(Math.PI / 2);
+      hoodGeo.scale(1.2, 0.25, 1.0);
+      const hood = new THREE.Mesh(hoodGeo, carbonBodyMat);
+      hood.position.set(0, 0.52, 1.15);
+      hood.castShadow = true;
+      buggyGroup.add(hood);
+
+      // Crimson Center Stripe
+      const stripeGeo = new THREE.BoxGeometry(0.18, 0.05, 1.2);
+      const stripe = new THREE.Mesh(stripeGeo, crimsonMat);
+      stripe.position.set(0, 0.62, 1.1);
+      stripe.rotation.x = -0.12;
+      buggyGroup.add(stripe);
+
+      // --- ANGLE LED LIGHT BLADES ---
+      [-0.48, 0.48].forEach(x => {
+        const bladeGeo = new THREE.BoxGeometry(0.25, 0.04, 0.08);
+        const blade = new THREE.Mesh(bladeGeo, xenonLightMat);
+        blade.position.set(x, 0.55, 1.62);
+        blade.rotation.y = x > 0 ? -0.3 : 0.3;
+        blade.rotation.z = x > 0 ? -0.2 : 0.2;
+        buggyGroup.add(blade);
+      });
+
+      // --- HIGH WING REAR SPOILER ---
+      const wingBladeGeo = new THREE.BoxGeometry(1.7, 0.04, 0.35);
+      const wingBlade = new THREE.Mesh(wingBladeGeo, carbonBodyMat);
+      wingBlade.position.set(0, 1.25, -1.45);
+      wingBlade.rotation.x = 0.08;
+      wingBlade.castShadow = true;
+
+      // Wing Endplates
+      [-0.85, 0.85].forEach(x => {
+        const endplateGeo = new THREE.BoxGeometry(0.03, 0.25, 0.42);
+        const endplate = new THREE.Mesh(endplateGeo, crimsonMat);
+        endplate.position.set(x, 1.25, -1.45);
+        buggyGroup.add(endplate);
+      });
+
+      // Wing Mount Stems
+      buggyGroup.add(createTube(new THREE.Vector3(-0.4, 0.9, -1.35), new THREE.Vector3(-0.4, 1.25, -1.45), 0.035, goldMat));
+      buggyGroup.add(createTube(new THREE.Vector3(0.4, 0.9, -1.35), new THREE.Vector3(0.4, 1.25, -1.45), 0.035, goldMat));
+      buggyGroup.add(wingBlade);
+
+      // --- COCKPIT: RACING BUCKET SEATS & DASH ---
+      [-0.32, 0.32].forEach(x => {
+        const seatGeo = new THREE.BoxGeometry(0.5, 0.75, 0.1);
+        const seat = new THREE.Mesh(seatGeo, carbonBodyMat);
+        seat.position.set(x, 0.65, -0.2);
+        seat.rotation.x = -0.25;
+
+        // Gold Harness Belts
+        [-0.14, 0.14].forEach(bx => {
+          const beltGeo = new THREE.BoxGeometry(0.07, 0.7, 0.02);
+          const belt = new THREE.Mesh(beltGeo, goldMat);
+          belt.position.set(bx, 0.02, 0.06);
+          seat.add(belt);
+        });
+
+        const cushionGeo = new THREE.BoxGeometry(0.5, 0.08, 0.5);
+        const cushion = new THREE.Mesh(cushionGeo, crimsonMat);
+        cushion.position.set(x, 0.38, -0.05);
+
+        buggyGroup.add(seat, cushion);
+      });
+
+      // F1 Style Yoke Steering Wheel
+      const steeringGeo = new THREE.BoxGeometry(0.28, 0.15, 0.03);
+      const steering = new THREE.Mesh(steeringGeo, carbonBodyMat);
+      steering.position.set(-0.32, 0.82, 0.28);
+      steering.rotation.x = 0.4;
+      buggyGroup.add(steering);
+
+      // --- EXPOSED TWIN-TURBO V8 ENGINE ---
+      const engineGeo = new THREE.BoxGeometry(0.9, 0.45, 0.75);
+      const engine = new THREE.Mesh(engineGeo, chassisMat);
+      engine.position.set(0, 0.55, -1.0);
+      buggyGroup.add(engine);
+
+      // Gold Valve Covers
+      [-0.25, 0.25].forEach(x => {
+        const coverGeo = new THREE.BoxGeometry(0.25, 0.12, 0.65);
+        const cover = new THREE.Mesh(coverGeo, goldMat);
+        cover.position.set(x, 0.78, -1.0);
+        buggyGroup.add(cover);
+      });
+
+      // Twin Chrome Turbos
+      [-0.3, 0.3].forEach(x => {
+        const turboGeo = new THREE.TorusGeometry(0.12, 0.05, 12, 24);
+        const turbo = new THREE.Mesh(turboGeo, chromeMat);
+        turbo.rotation.y = Math.PI / 2;
+        turbo.position.set(x, 0.72, -1.4);
+        buggyGroup.add(turbo);
+      });
+
+      // --- WIDE-STANCE DEEP DISH WHEELS ---
+      function buildHyperWheel(x, z, radius, width, isFront) {
+        const group = new THREE.Group();
+
+        // Low Profile Offroad Tire
+        const tireGeo = new THREE.CylinderGeometry(radius, radius, width, 24);
+        tireGeo.rotateZ(Math.PI / 2);
+        const tire = new THREE.Mesh(tireGeo, tireMat);
+        tire.castShadow = true;
+        group.add(tire);
+
+        // Anodized Gold Deep-Dish Rim
+        const rimGeo = new THREE.CylinderGeometry(radius * 0.7, radius * 0.5, width * 1.02, 16);
+        rimGeo.rotateZ(Math.PI / 2);
+        const rim = new THREE.Mesh(rimGeo, goldMat);
+        group.add(rim);
+
+        // Center Chrome Nut
+        const capGeo = new THREE.CylinderGeometry(radius * 0.2, radius * 0.2, width * 1.06, 8);
+        capGeo.rotateZ(Math.PI / 2);
+        const cap = new THREE.Mesh(capGeo, chromeMat);
+        group.add(cap);
+
+        // Visible Red Brake Disc & Caliper
+        const discGeo = new THREE.CylinderGeometry(radius * 0.55, radius * 0.55, 0.03, 16);
+        discGeo.rotateZ(Math.PI / 2);
+        const disc = new THREE.Mesh(discGeo, chromeMat);
+        
+        const caliperGeo = new THREE.BoxGeometry(0.08, radius * 0.3, 0.18);
+        const caliper = new THREE.Mesh(caliperGeo, brakeCaliperMat);
+        caliper.position.set(x > 0 ? -0.08 : 0.08, radius * 0.25, 0);
+        group.add(disc, caliper);
+
+        // Dual Coilover Suspension Shocks
+        const suspGroup = new THREE.Group();
+        const shockGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.75, 8);
+        const shock = new THREE.Mesh(shockGeo, chromeMat);
+        
+        const springGeo = new THREE.TorusKnotGeometry(0.06, 0.016, 64, 6, 2, 10);
+        const spring = new THREE.Mesh(springGeo, crimsonMat);
+        spring.rotation.x = Math.PI / 2;
+
+        suspGroup.add(shock, spring);
+        suspGroup.rotation.z = x > 0 ? -Math.PI / 6 : Math.PI / 6;
+        suspGroup.position.set(x > 0 ? -0.28 : 0.28, 0.3, 0);
+        group.add(suspGroup);
+
+        group.position.set(x, radius, z);
+        return group;
+      }
+
+      // Front & Rear Wheel Placements
+      buggyGroup.add(buildHyperWheel(-1.08, 1.1, 0.44, 0.45, true));
+      buggyGroup.add(buildHyperWheel(1.08, 1.1, 0.44, 0.45, true));
+      buggyGroup.add(buildHyperWheel(-1.18, -1.15, 0.54, 0.58, false));
+      buggyGroup.add(buildHyperWheel(1.18, -1.15, 0.54, 0.58, false));
+
+      return buggyGroup;
+    }
+
+    const buggyModel = buildApexBuggy();
+    scene.add(buggyModel);
+
+    // 6. GLB Exporter
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const exporter = new GLTFExporter();
+      exporter.parse(
+        buggyModel,
+        (gltf) => {
+          const blob = new Blob([gltf], { type: 'application/octet-stream' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'apex_stealth_buggy.glb';
+          link.click();
+        },
+        (error) => console.error('Export error:', error),
+        { binary: true }
+      );
+    });
+
+    // 7. Render Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      composer.render();
+    }
+    animate();
+
+    // 8. Resize Handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
