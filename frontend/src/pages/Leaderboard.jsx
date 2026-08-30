@@ -15,7 +15,7 @@ export default function Leaderboard() {
 		const fetchAllUsersData = async () => {
 			try {
 				const response = await fetch(
-					"http://localhost:3000/users/all/data",
+					`http://localhost:3000/users/all/data?filter=${encodeURIComponent(activeFilter)}`,
 					{
 						method: "GET",
 						credentials: "include",
@@ -29,11 +29,10 @@ export default function Leaderboard() {
 
 				const data = await response.json();
 				setAllUsersData(data.data);
-				console.log(data.data);
 			} catch (error) {
 				toast.error("Failed to Fetch the data");
 			} finally {
-				setIsLoading(false);
+				setIsLoading(!isLoading);
 			}
 		};
 		fetchAllUsersData();
