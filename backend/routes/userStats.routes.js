@@ -14,4 +14,4 @@ router.post('/stats', jwtAuthMiddleware, userStatsPostController);
 router.get('/stats', jwtAuthMiddleware, userStatsGetController); 
 router.get('/users/all/data', jwtAuthMiddleware, allUserDataController); 
 
-export default router; 
+export default router;

@@ -124,7 +124,7 @@ export const setUpWebSocketServer = (wss) => {
                 });
             }
             if (parsedMessage.type === "room:start") {
-                const { roomId } = parsedMessage.payload;
+                const { roomId, passage } = parsedMessage.payload;
 
                 const room = rooms.find((room) => room.id === roomId);
 
@@ -133,6 +133,9 @@ export const setUpWebSocketServer = (wss) => {
                 }
 
                 room.status = "running";
+                if (passage) {
+                    room.passage = passage;
+                }
 
                 const response = JSON.stringify({
                     type: "room:start",
@@ -144,6 +147,30 @@ export const setUpWebSocketServer = (wss) => {
                         client.send(response);
                     }
                 });
+            }
+            if (parsedMessage.type === "room:update_progress") {
+                const { roomId, userId, progress, wpm, isFinished, rank } = parsedMessage.payload;
+                const room = rooms.find((r) => r.id === roomId);
+                if (room) {
+                    const player = room.players.find(p => p.id === userId);
+                    if (player) {
+                        if (progress !== undefined) player.progress = progress;
+                        if (wpm !== undefined) player.wpm = wpm;
+                        if (isFinished !== undefined) player.isFinished = isFinished;
+                        if (rank !== undefined) player.rank = rank;
+                    }
+                    
+                    const response = JSON.stringify({
+                        type: "room:progress_updated",
+                        payload: room,
+                    });
+                    
+                    wss.clients.forEach((client) => {
+                        if (client.readyState === WebSocket.OPEN) {
+                            client.send(response);
+                        }
+                    });
+                }
             }
         });
     });

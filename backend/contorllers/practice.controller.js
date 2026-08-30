@@ -10,7 +10,7 @@ export const getPracticeWordsController = async (request, response) => {
 		// 	? 25
 		// 	: Math.min(Math.max(parsedCount, MIN_WORD_COUNT), MAX_WORD_COUNT);
 
-		const count = 500; 
+		const count = 500;
 
 		const result = await pool.query(
 			`
