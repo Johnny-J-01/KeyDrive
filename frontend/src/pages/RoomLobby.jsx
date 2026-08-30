@@ -30,15 +30,44 @@ export default function RoomLobby({
 		}
 	};
 
-	const handleStartRace = () => {
-		socketRef.current?.send(
-			JSON.stringify({
-				type: "room:start",
-				payload: {
-					roomId: room.id,
+	const handleStartRace = async () => {
+		try {
+			const response = await fetch(
+				"http://localhost:3000/practice/words",
+				{
+					method: "GET",
+					credentials: "include",
 				},
-			}),
-		);
+			);
+			let passage =
+				"the secret of getting ahead is getting started and typing fast";
+			if (response.ok) {
+				const data = await response.json();
+				// curretly hard coding just 20 wrods, later feautre will be added where user will be able to select the number of words or maybe just random wrods.
+				passage = data.text.split(" ").slice(0, 20).join(" ");
+			}
+			socketRef.current?.send(
+				JSON.stringify({
+					type: "room:start",
+					payload: {
+						roomId: room.id,
+						passage: passage,
+					},
+				}),
+			);
+		} catch (error) {
+			console.error("Failed to fetch words:", error);
+			socketRef.current?.send(
+				JSON.stringify({
+					type: "room:start",
+					payload: {
+						roomId: room.id,
+						passage:
+							"the secret of getting ahead is getting started and typing fast",
+					},
+				}),
+			);
+		}
 	};
 
 	return (

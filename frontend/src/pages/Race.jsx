@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import LiveRace from "./LiveRace";
 
 export default function Race() {
-	// TEmp hardcoded rooms (in dev);
 	const [rooms, setRooms] = useState([]);
 	const [userData, setUserData] = useState({
 		id: `${crypto.randomUUID()}`,
@@ -26,7 +25,6 @@ export default function Race() {
 	const socketRef = useRef(null);
 	const [isLoading, setIsLoading] = useState(true);
 
-	// fetch user data on component mount
 	useEffect(() => {
 		const fetchUserData = async () => {
 			try {
@@ -58,7 +56,7 @@ export default function Race() {
 		fetchUserData();
 	}, []);
 
-	// WebSocket connection and event handling
+	// WebSocket connection
 	useEffect(() => {
 		const socket = new WebSocket("ws://localhost:3000");
 		console.log("connected to websocket server");
@@ -91,7 +89,10 @@ export default function Race() {
 			if (message.type === "room:left") {
 				setActiveRoom(null);
 			}
-			if (message.type === "room:updated") {
+			if (
+				message.type === "room:updated" ||
+				message.type === "room:progress_updated"
+			) {
 				setActiveRoom(message.payload);
 			}
 			if (message.type === "room:start") {
