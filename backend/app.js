@@ -27,7 +27,8 @@ app.use(express.static('/KEYDRIVE/backend/public'));
 app.use(cors({
     origin: "http://localhost:5173", 
     allowedHeaders: [
-        'Content-Type'
+        'Content-Type',
+        'Authorization'
     ],
     methods: [
         "GET", 

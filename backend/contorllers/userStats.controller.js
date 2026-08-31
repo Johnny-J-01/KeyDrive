@@ -14,6 +14,7 @@ export const userProfileController = async (request, response) => {
                 WHERE id = $1
             `, [request.user.userId]
         )
+        console.log(userPersonalData);
         response.status(200).json({
             data: userPersonalData
         })
