@@ -33,7 +33,8 @@ export const userAuthRegisterController = async (request, response) => {
                 RETURNING *; 
             `, [validationResult.data.userName, validationResult.data.userEmail, userHashedPassword]
         );
-
+            
+    console.log(userHashedPassword);
         const userId = result.rows[0].id;
         const verificationToken = generateVerificationToken(userId);
         // console.log(verificationToken);
