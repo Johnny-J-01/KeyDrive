@@ -224,7 +224,7 @@ export const userAuthLoginController = async (request, response) => {
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
             maxAge: 30 * 24 * 60 * 60 * 1000,
-            path: "/auth"
+            path: "/"
         });
 
 
@@ -369,7 +369,7 @@ export const userAuthRefreshController = async (request, response) => {
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
             maxAge: 30 * 24 * 60 * 60 * 1000,
-            path: "/auth"
+            path: "/"
         });
 
         return response.status(200).json({
