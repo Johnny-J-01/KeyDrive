@@ -1,20 +1,26 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
 import { useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, KeyRound, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 function ForgotPassword() {
-	const emailRef = useRef();
+	const emailRef = useRef(null);
 	const navigate = useNavigate();
 
 	const handleBackToLogin = () => {
-		navigate("/Login");
+		navigate("/login");
 	};
 
-	const handleForgetPassword = async () => {
-		try {
-			const email = emailRef.current.value;
+	const handleForgetPassword = async (event) => {
+		event.preventDefault();
 
+		const email = emailRef.current?.value.trim();
+		if (!email) {
+			toast.error("Please enter your email address.");
+			return;
+		}
+
+		try {
 			const response = await fetch(
 				"http://localhost:3000/api/password/ForgotPassword",
 				{
@@ -30,39 +36,47 @@ function ForgotPassword() {
 			const data = await response.json();
 
 			if (!response.ok) {
-				console.log(data.message);
+				toast.error(data.message || "Unable to send reset link.");
 				return;
 			}
 
-			console.log(data);
-			toast.success("Reset Password Link sent to your email");
+			toast.success("Reset link sent to your email.");
+			emailRef.current.value = "";
 		} catch (error) {
-			console.log(error);
+			console.error(error);
+			toast.error("Unable to connect to the server.");
 		}
 	};
 
 	return (
-		<div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8 ">
-			<div className="sm:mx-auto sm:w-full sm:max-w-sm">
-				<h2 className="mt-10 text-center text-2xl/9 font-bold tracking-tight text-white">
-					Forgot password?
-				</h2>
-				<p className="text-gray-400 text-center">
-					Enter your email and we will send you a link to reset your
-					password to your registered email
-				</p>
-			</div>
+		<div className="flex flex-col items-center justify-center py-20">
+			<div className="w-full max-w-md bg-surface border border-borderMain rounded-2xl p-8">
+				<div className="flex flex-col items-center mb-8">
+					<div className="bg-primary/10 p-3 rounded-xl mb-4">
+						<KeyRound className="w-8 h-8 text-primary" />
+					</div>
+					<h1 className="text-2xl font-bold text-white mb-2">
+						Forgot password
+					</h1>
+					<p className="text-textMuted text-sm text-center">
+						Enter your email and we’ll send a reset link to your
+						registered account.
+					</p>
+				</div>
 
-			<div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-				<form className="space-y-6">
-					<div>
+				<form
+					className="flex flex-col gap-4"
+					onSubmit={handleForgetPassword}
+				>
+					<div className="flex flex-col gap-1.5">
 						<label
 							htmlFor="email"
-							className="block text-sm/6 font-medium text-gray-100"
+							className="text-sm font-medium text-textMuted"
 						>
 							Email
 						</label>
-						<div className="mt-2">
+						<div className="relative">
+							<Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textMuted" />
 							<input
 								id="email"
 								type="email"
@@ -70,26 +84,36 @@ function ForgotPassword() {
 								ref={emailRef}
 								required
 								autoComplete="email"
-								className="block w-full rounded-md text-black bg-white px-3 py-1.5 text-bas outline-1 -outline-offset-1 focus:outline-indigo-500 sm:text-sm/6"
-								placeholder="example@gmail.com"
+								placeholder="you@example.com"
+								className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-background border border-borderMain text-white placeholder:text-textMuted focus:outline-none focus:border-primary transition-colors"
 							/>
 						</div>
 					</div>
-				</form>
-				<div>
+
 					<button
-						onClick={handleForgetPassword}
 						type="submit"
-						className="mt-5 *:flex w-full justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+						className="mt-2 w-full py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-colors"
 					>
-						Reset Password
+						Send reset link
 					</button>
+				</form>
+
+				<div className="mt-6 flex items-center justify-between gap-3">
 					<button
+						type="button"
 						onClick={handleBackToLogin}
-						className="mt-5 *:flex w-full justify-center rounded-md px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 border-2 border-indigo-400"
+						className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
 					>
-						Back to Login page
+						<ArrowLeft className="w-4 h-4" />
+						Back to login
 					</button>
+
+					<Link
+						to="/login"
+						className="text-sm text-textMuted hover:text-white"
+					>
+						Need an account?
+					</Link>
 				</div>
 			</div>
 		</div>

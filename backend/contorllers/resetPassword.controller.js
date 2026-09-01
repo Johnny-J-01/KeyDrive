@@ -10,89 +10,112 @@ export const forgotPasswordController = async (request, response) => {
     try {
         const { email } = request.body;
 
-        if (!email) {
+        if (!email || !email.trim()) {
             return response.status(400).json({
                 success: false,
-                message: "Email not found"
-            })
+                message: "Email is required"
+            });
         }
 
         const result = await pool.query(
             `
-                SELECT *  
-                FROM users 
+                SELECT *
+                FROM users
                 WHERE email = $1
-            `, [email]
-        ); 
+            `,
+            [email.trim()]
+        );
 
-
-        if (!result) {
-            return response.status(400).json({
+        if (result.rows.length === 0) {
+            return response.status(404).json({
                 success: false,
                 message: "User not found"
-            })
+            });
         }
 
-        const ResetToken = generateResetToken(result.rows[0].id);
-        const ResetLink = `http://localhost:5173/reset-password?token=${ResetToken}`;
+        const resetToken = generateResetToken(result.rows[0].id);
+        const resetLink = `http://localhost:5173/reset-password?token=${resetToken}`;
 
         try {
             await sendEmail({
                 to: result.rows[0].email,
-                subject: "Reset Your Email",
+                subject: "Reset Your Password",
                 html: resetPasswordTemplate(
                     result.rows[0].username,
-                    ResetLink
+                    resetLink
                 ),
             });
-            response.status(200).json({ ...result.rows[0], "message": "Password has been reset, Redirecting to login page" });
-        }
-        catch (error) {
+
+            return response.status(200).json({
+                success: true,
+                message: "Password reset link sent to your email",
+                user: result.rows[0]
+            });
+        } catch (error) {
             console.log(`Failed to send the Reset email: `, error.message);
+            return response.status(500).json({
+                success: false,
+                message: "Unable to send reset email right now"
+            });
         }
-    }
-    catch (error) {
+    } catch (error) {
         console.log(error);
-        response.status(400).json({
+        return response.status(400).json({
+            success: false,
             message: error.message
-        })
+        });
     }
-}
+};
 
 export const resetPasswordController = async (request, response) => {
     try {
         const { token, password } = request.body;
 
-        const hashedNewPassword = await bcrypt.hash(password, 10);
+        if (!token) {
+            return response.status(400).json({
+                success: false,
+                message: "Reset token is missing"
+            });
+        }
+
+        if (!password || password.trim().length < 6) {
+            return response.status(400).json({
+                success: false,
+                message: "Password must be at least 6 characters long"
+            });
+        }
+
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userId = decoded.userId;
-        console.log("decoded: ", decoded);
+
+        const hashedNewPassword = await bcrypt.hash(password.trim(), 10);
 
         const updatePassword = await pool.query(
             `
-                UPDATE users 
-                SET 
+                UPDATE users
+                SET
                     password_hash = $1
                 WHERE id = $2
-                RETURNING *;  
-            `,[hashedNewPassword, userId] 
-        ); 
+                RETURNING *;
+            `,
+            [hashedNewPassword, userId]
+        );
 
-        if (!updatePassword) {
-            response.status(400).json({
+        if (updatePassword.rows.length === 0) {
+            return response.status(400).json({
                 success: false,
-                message: "failed to reset the password"
-            })
+                message: "Failed to reset the password"
+            });
         }
 
-        response.status(200).json({
+        return response.status(200).json({
             success: true,
-            message: "successfully changed the password"
-        })
-    }
-    catch (error) {
-        response.status(400).json({
+            message: "Successfully changed the password"
+        });
+    } catch (error) {
+        return response.status(400).json({
+            success: false,
             message: error.message
-        })
+        });
     }
-}
+};

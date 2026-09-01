@@ -1,20 +1,30 @@
-import React from "react";
 import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { KeyRound, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 function ResetPassword() {
-	const passwordRef = useRef();
+	const passwordRef = useRef(null);
 	const navigate = useNavigate();
 	const [searchParams] = useSearchParams();
 
 	const handleResetPassword = async (event) => {
 		event.preventDefault();
-		try {
-			const token = searchParams.get("token");
-			const password = passwordRef.current.value;
 
+		const token = searchParams.get("token");
+		const password = passwordRef.current?.value.trim();
+
+		if (!token) {
+			toast.error("This reset link is invalid or expired.");
+			return;
+		}
+
+		if (!password || password.length < 6) {
+			toast.error("Password must be at least 6 characters long.");
+			return;
+		}
+
+		try {
 			const response = await fetch(
 				"http://localhost:3000/resetPassword",
 				{
@@ -22,68 +32,77 @@ function ResetPassword() {
 					headers: {
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify({ token: token, password: password }),
+					body: JSON.stringify({ token, password }),
 					credentials: "include",
 				},
 			);
+
+			const data = await response.json();
 			if (!response.ok) {
-				console.log("Failed to reset the password");
+				toast.error(data.message || "Failed to reset the password");
 				return;
 			}
 
-			const data = await response.json();
-			navigate("/Login");
 			toast.success(
-				"Password has been successfully reset, redirecting to the login page",
+				"Password reset successfully. Redirecting to login...",
 			);
+			navigate("/login");
 		} catch (error) {
-			console.log(error.message);
+			console.error(error);
+			toast.error("Unable to reset the password right now.");
 		}
 	};
 
 	return (
-		<>
-			<div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8 ">
-				<div className="sm:mx-auto sm:w-full sm:max-w-sm">
-					<h2 className="mt-10 text-center text-2xl/9 font-bold tracking-tight text-white">
+		<div className="flex flex-col items-center justify-center py-20">
+			<div className="w-full max-w-md bg-surface border border-borderMain rounded-2xl p-8">
+				<div className="flex flex-col items-center mb-8">
+					<div className="bg-primary/10 p-3 rounded-xl mb-4">
+						<KeyRound className="w-8 h-8 text-primary" />
+					</div>
+					<h1 className="text-2xl font-bold text-white mb-2">
 						Reset password
-					</h2>
+					</h1>
+					<p className="text-textMuted text-sm text-center">
+						Choose a new password for your account.
+					</p>
 				</div>
 
-				<div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-					<form onSubmit={handleResetPassword} className="space-y-6">
-						<div>
-							<label
-								htmlFor="password"
-								className="block text-sm/6 font-medium text-gray-100"
-							>
-								Password
-							</label>
-							<div className="mt-2">
-								<input
-									id="password"
-									type="password"
-									name="password"
-									ref={passwordRef}
-									required
-									autoComplete="on"
-									className="block w-full rounded-md text-black bg-white px-3 py-1.5 text-bas outline-1 -outline-offset-1 focus:outline-indigo-500 sm:text-sm/6"
-									placeholder="password"
-								/>
-							</div>
+				<form
+					onSubmit={handleResetPassword}
+					className="flex flex-col gap-4"
+				>
+					<div className="flex flex-col gap-1.5">
+						<label
+							htmlFor="password"
+							className="text-sm font-medium text-textMuted"
+						>
+							New password
+						</label>
+						<div className="relative">
+							<Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textMuted" />
+							<input
+								id="password"
+								type="password"
+								name="password"
+								ref={passwordRef}
+								required
+								autoComplete="new-password"
+								placeholder="Enter a new password"
+								className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-background border border-borderMain text-white placeholder:text-textMuted focus:outline-none focus:border-primary transition-colors"
+							/>
 						</div>
-						<div>
-							<button
-								type="submit"
-								className="mt-5 *:flex w-full justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
-							>
-								Reset Password
-							</button>
-						</div>
-					</form>
-				</div>
+					</div>
+
+					<button
+						type="submit"
+						className="mt-2 w-full py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-colors"
+					>
+						Update password
+					</button>
+				</form>
 			</div>
-		</>
+		</div>
 	);
 }
 
