@@ -87,13 +87,13 @@ function AuthProvider({ children }) {
 	const [accessToken, setAccessToken] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
 
-	const login = (userData, token) => {
+	const login = useCallback((userData, token) => {
 		setUser(userData);
 		setAccessToken(token);
 		localStorage.setItem("user", JSON.stringify(userData));
-	};
+	}, []);
 
-	const logout = async () => {
+	const logout = useCallback(async () => {
 		try {
 			await fetch("http://localhost:3000/userAuthLogout", {
 				method: "POST",
@@ -106,7 +106,7 @@ function AuthProvider({ children }) {
 		setUser(null);
 		setAccessToken(null);
 		localStorage.removeItem("user");
-	};
+	}, []);
 
 	const refreshAccessToken = useCallback(async () => {
 		try {

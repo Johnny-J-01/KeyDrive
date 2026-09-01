@@ -1,8 +1,22 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Keyboard } from "lucide-react";
 import React from "react";
 import { toast } from "sonner";
 import { useAuth } from "../main";
+
+const decodeJwtPayload = (token) => {
+	try {
+		const base64Payload = token.split(".")[1];
+		const normalized = base64Payload.replace(/-/g, "+").replace(/_/g, "/");
+		const padded = normalized.padEnd(
+			normalized.length + ((4 - (normalized.length % 4)) % 4),
+			"=",
+		);
+		return JSON.parse(atob(padded));
+	} catch (error) {
+		return null;
+	}
+};
 
 export default function Login() {
 	const [userFormData, setUserFormData] = React.useState({
@@ -10,6 +24,7 @@ export default function Login() {
 		userPassword: "",
 	});
 	const navigate = useNavigate();
+	const [searchParams] = useSearchParams();
 
 	const handleFormOnChange = (event) => {
 		const { name, value } = event.target;
@@ -17,6 +32,38 @@ export default function Login() {
 	};
 
 	const { login } = useAuth();
+	const handledOauthRef = React.useRef(false);
+
+	React.useEffect(() => {
+		const oauthStatus = searchParams.get("oauth");
+		const oauthToken = searchParams.get("token");
+
+		if (handledOauthRef.current) {
+			return;
+		}
+
+		if (oauthStatus === "success" && oauthToken) {
+			handledOauthRef.current = true;
+			const payload = decodeJwtPayload(oauthToken);
+			const user = {
+				id: payload?.userId || payload?.sub || "google-user",
+				userName: "Google User",
+				userEmail: "",
+			};
+
+			login(user, oauthToken);
+			toast.success("Successfully signed in with Google!", {
+				id: "google-oauth-login-success",
+			});
+			navigate("/practice", { replace: true });
+			return;
+		}
+
+		if (oauthStatus === "failed") {
+			handledOauthRef.current = true;
+			toast.error("Google sign-in failed. Please try again.");
+		}
+	}, [login, navigate, searchParams]);
 
 	// const handleLoginFormSubmit = async (event) => {
 	// 	event.preventDefault();
@@ -141,7 +188,14 @@ export default function Login() {
 					<div className="h-px bg-borderMain flex-1" />
 				</div>
 
-				<button className="mt-6 w-full py-2.5 bg-background border border-borderMain text-white font-medium rounded-lg hover:bg-white/[0.02] transition-colors flex items-center justify-center gap-2">
+				<button
+					type="button"
+					onClick={() => {
+						window.location.href =
+							"http://localhost:3000/auth/google";
+					}}
+					className="mt-6 w-full py-2.5 bg-background border border-borderMain text-white font-medium rounded-lg hover:bg-white/[0.02] transition-colors flex items-center justify-center gap-2"
+				>
 					<svg className="w-5 h-5" viewBox="0 0 24 24">
 						<path
 							fill="currentColor"
@@ -160,7 +214,7 @@ export default function Login() {
 							d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
 						/>
 					</svg>
-					Google
+					Continue with Google
 				</button>
 
 				<p className="mt-8 text-center text-sm text-textMuted">

@@ -11,6 +11,8 @@ import emailRouter from '../backend/routes/EmailVerification.routes.js';
 import statsRouter from '../backend/routes/userStats.routes.js'; 
 import practiceRouter from '../backend/routes/practice.routes.js'; 
 import resetPasswordRouter from '../backend/routes/ResetPasword.route.js'; 
+import googleRouter from '../backend/routes/OAuth.route.js';
+import passport from '../backend/config/passport.js';
 import { setUpWebSocketServer } from '../backend/webSockets/websocket.js';
 
 dotenv.config(); 
@@ -40,11 +42,13 @@ app.use(cors({
     credentials: true
 })); 
 app.use(cookieParser(process.env.COOKIE_PW));
+app.use(passport.initialize());
 app.use('/', AuthRouter);
 app.use('/', emailRouter); 
 app.use('/', statsRouter); 
 app.use('/', practiceRouter); 
 app.use('/', resetPasswordRouter); 
+app.use('/', googleRouter); 
 
 setUpWebSocketServer(wss);
 
