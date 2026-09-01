@@ -4,7 +4,7 @@ import {
     userStatsGetController, 
     userStatsPostController, 
     allUserDataController
-} from '../contorllers/userStats.controller.js'; 
+} from '../controllers/userStats.controller.js'; 
 import { jwtAuthMiddleware } from '../middlewares/jwtAuth.middleware.js'; 
 
 const router = express.Router(); 

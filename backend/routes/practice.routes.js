@@ -1,5 +1,5 @@
 import express from 'express';
-import { getPracticeWordsController } from '../contorllers/practice.controller.js';
+import { getPracticeWordsController } from '../controllers/practice.controller.js';
 
 const router = express.Router();
 

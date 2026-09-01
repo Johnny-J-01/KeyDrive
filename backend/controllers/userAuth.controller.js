@@ -442,38 +442,52 @@ export const userAuthLogoutController = async (request, response) => {
 
 export const userAuthDeleteController = async (request, response) => {
     try {
-        const token = jwt.verify(request.signedCookies.token, process.env.JWT_SECRET); 
-        if (!token) {
-            response.status(400).json({
-                message: "Login to your account, to proceed with the deletion of the account"
-            })
+        const userId = request.user?.userId;
+
+        if (!userId) {
+            return response.status(401).json({
+                success: false,
+                message: "Login to your account to proceed with deleting the account"
+            });
         }
-        const userId = token.userId; 
+
+        await pool.query(
+            `
+                UPDATE auth_sessions
+                SET revoked_at = CURRENT_TIMESTAMP
+                WHERE user_id = $1;
+            `,
+            [userId]
+        );
 
         const result = await pool.query(
             `
                 DELETE FROM users 
                 WHERE id = $1 
-            `, [userId]
-        ); 
+                RETURNING id;
+            `,
+            [userId]
+        );
 
-
-        if (!result) {
-            response.status(400).json({
-                success: false,  
-                message: "user not found"
-            })
+        if (result.rowCount === 0) {
+            return response.status(404).json({
+                success: false,
+                message: "User not found"
+            });
         }
 
-        response.status(200).json({
+        response.clearCookie("refreshToken", { path: "/" });
+
+        return response.status(200).json({
             success: true,
-            message: "deleted Successfully"
-        })
+            message: "Account deleted successfully"
+        });
     }
     catch (error) {
-        response.status(400).json({
-            error: error.message
-        }); 
+        return response.status(400).json({
+            success: false,
+            message: error.message
+        });
     }
 }
 

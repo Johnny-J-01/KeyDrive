@@ -6,7 +6,8 @@ import {
     userAuthDeleteController,
     userAuthProfileController,
     userAuthRefreshController,
-} from '../contorllers/userAuth.controller.js'; 
+} from '../controllers/userAuth.controller.js'; 
+import { jwtAuthMiddleware } from '../middlewares/jwtAuth.middleware.js';
 
 const router = express.Router(); 
 
@@ -15,6 +16,6 @@ router.post('/userEditProfile', userAuthProfileController);
 router.post('/userAuthLogin', userAuthLoginController); 
 router.post("/refresh", userAuthRefreshController);
 router.post('/userAuthLogout', userAuthLogoutController); 
-router.get('/userAuthDelete', userAuthDeleteController); 
+router.delete('/userAuthDelete', jwtAuthMiddleware, userAuthDeleteController); 
 
 export default router; 
