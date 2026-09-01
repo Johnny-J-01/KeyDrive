@@ -100,7 +100,7 @@ function EditProfile() {
 		const response = await fetchWithAuth(
 			"http://localhost:3000/userAuthDelete",
 			{
-				method: "GET",
+				method: "DELETE",
 			},
 		);
 
@@ -110,7 +110,7 @@ function EditProfile() {
 		}
 
 		toast.success("Successfully Deleted the account");
-		toast.success("Redirecting to the home page");
+		await logout();
 		navigate("/login");
 	};
 

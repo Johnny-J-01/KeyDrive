@@ -453,8 +453,15 @@ export const userAuthDeleteController = async (request, response) => {
 
         await pool.query(
             `
-                UPDATE auth_sessions
-                SET revoked_at = CURRENT_TIMESTAMP
+                DELETE FROM practice_history
+                WHERE user_id = $1;
+            `,
+            [userId]
+        );
+
+        await pool.query(
+            `
+                DELETE FROM auth_sessions
                 WHERE user_id = $1;
             `,
             [userId]

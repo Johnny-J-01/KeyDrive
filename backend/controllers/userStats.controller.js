@@ -29,7 +29,21 @@ export const userProfileController = async (request, response) => {
 export const userStatsPostController = async (request, response) => {
     try {
         const data = request.body;
-        console.log(data);
+
+        if (!request.user || !request.user.userId) {
+            return response.status(401).json({
+                success: false,
+                message: "Please login to save your results."
+            });
+        }
+
+        if (data.user_id === "guest") {
+            return response.status(401).json({
+                success: false,
+                message: "Guest account cannot save results. Please login first."
+            });
+        }
+
         const result = await pool.query(
             `
                 INSERT INTO practice_history (user_id, mode, word_count, duration_seconds, wpm, accuracy, errors, started_at)
@@ -37,7 +51,6 @@ export const userStatsPostController = async (request, response) => {
                 RETURNING *; 
             `, [request.user.userId, data.mode, data.word_count, data.duration_seconds, data.wpm, data.accuracy, data.errors, data.started_at]
         );
-
 
         response.status(201).json({
             message: "Data updated in the database successfully!!",
@@ -47,37 +60,52 @@ export const userStatsPostController = async (request, response) => {
     catch (error) {
         console.error("DATABASE ERROR:", error);
         response.status(400).json({
-            error: error.messadg
+            error: error.message
         })
     }
 }
 
 export const userStatsGetController = async (request, response) => {
     try {
-        const result = await pool.query(
-            `
-                SELECT ROUND(AVG(wpm), 2) as AVG_WPM,
-                ROUND(AVG(accuracy), 2) as AVG_accuracy
-                FROM practice_history; 
-            `
-        )
-        const AVG_WPM = result.rows[0].avg_wpm;
-        const AVG_Acc = result.rows[0].avg_accuracy;
+        const userId = request.user?.userId;
 
-        const statData = {
-            AVG_WPM,
-            AVG_Acc,
+        if (!userId) {
+            return response.status(401).json({
+                success: false,
+                message: "Please login to view your stats."
+            });
         }
 
-        response.status(201).json({
-            message: "Data updated in the database successfully!!",
+        const result = await pool.query(
+            `
+                SELECT 
+                    ROUND(AVG(wpm), 2) as avg_wpm,
+                    ROUND(AVG(accuracy), 2) as avg_accuracy,
+                    COUNT(*) as total_sessions
+                FROM practice_history
+                WHERE user_id = $1;
+            `,
+            [userId]
+        );
+
+        const avgWpm = result.rows[0]?.avg_wpm ?? 0;
+        const avgAcc = result.rows[0]?.avg_accuracy ?? 0;
+
+        const statData = {
+            AVG_WPM: avgWpm,
+            AVG_Acc: avgAcc,
+            total_sessions: result.rows[0]?.total_sessions ?? 0,
+        };
+
+        return response.status(200).json({
+            message: "User stats fetched successfully",
             data: statData
         });
     }
     catch (error) {
         console.error("DATABASE ERROR:", error);
-        response.status(400).json({
-            error: error.messadg
+        return response.status(400).json({
+            error: error.message
         })
     }
 }
