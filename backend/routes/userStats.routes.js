@@ -12,6 +12,6 @@ const router = express.Router();
 router.get('/profile', jwtAuthMiddleware, userProfileController); 
 router.post('/stats', jwtAuthMiddleware, userStatsPostController); 
 router.get('/stats', jwtAuthMiddleware, userStatsGetController); 
-router.get('/users/all/data', jwtAuthMiddleware, allUserDataController); 
+router.get('/users/all/data', allUserDataController); 
 
 export default router;

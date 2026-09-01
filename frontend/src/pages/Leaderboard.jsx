@@ -11,19 +11,45 @@ export default function Leaderboard() {
 	const [search, setSearch] = useState("");
 	const [allUsersData, setAllUsersData] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const { fetchWithAuth, loading } = useAuth();
+	const { fetchWithAuth, loading, user, accessToken } = useAuth();
+	const isAuthenticated = Boolean(user || accessToken);
+
+	const handleFilterChange = (filter) => {
+		if (filter === "All Time") {
+			setActiveFilter(filter);
+			return;
+		}
+
+		if (!isAuthenticated) {
+			toast.error(
+				"Please login to view Daily, Weekly, or Monthly leaderboard data.",
+			);
+			return;
+		}
+
+		setActiveFilter(filter);
+	};
 
 	useEffect(() => {
 		const fetchAllUsersData = async () => {
 			setIsLoading(true);
 			try {
-				const response = await fetchWithAuth(
-					`http://localhost:3000/users/all/data?filter=${encodeURIComponent(activeFilter)}`,
-					{ method: "GET" },
-				);
+				const isPublicFilter = activeFilter === "All Time";
+				const requestUrl = `http://localhost:3000/users/all/data?filter=${encodeURIComponent(activeFilter)}`;
+
+				const response = isPublicFilter
+					? await fetch(requestUrl, {
+							method: "GET",
+							credentials: "include",
+						})
+					: await fetchWithAuth(requestUrl, { method: "GET" });
 
 				if (!response.ok) {
-					toast.error("Please log in to view the leaderboard");
+					const message = await response.json().catch(() => ({}));
+					toast.error(
+						message.message ||
+							"Please login to view this leaderboard period.",
+					);
 					setAllUsersData([]);
 					return;
 				}
@@ -72,7 +98,7 @@ export default function Leaderboard() {
 					{FILTERS.map((f) => (
 						<button
 							key={f}
-							onClick={() => setActiveFilter(f)}
+							onClick={() => handleFilterChange(f)}
 							className={clsx(
 								"px-4 py-2 text-sm font-medium rounded-md transition-colors",
 								activeFilter === f

@@ -84,26 +84,46 @@ export const userStatsGetController = async (request, response) => {
 
 export const allUserDataController = async (request, response) => {
     try {
-        const { filter } = request.query;
-        console.log(filter);
+        const filter = request.query.filter || "All Time";
+
+        if (filter !== "All Time") {
+            const authHeader = request.headers.authorization;
+            if (!authHeader || !authHeader.startsWith("Bearer ")) {
+                return response.status(401).json({
+                    success: false,
+                    message: "Please login to view this leaderboard period."
+                });
+            }
+
+            const accessToken = authHeader.split(" ")[1];
+            try {
+                jwt.verify(accessToken, process.env.JWT_SECRET);
+            } catch (error) {
+                return response.status(401).json({
+                    success: false,
+                    message: "Please login to view this leaderboard period."
+                });
+            }
+        }
+
         let dateCondition = "";
         switch (filter) {
             case "Daily":
                 dateCondition = `
-					AND practice_history.started_at >= CURRENT_DATE
-				`;
+                    AND practice_history.started_at >= CURRENT_DATE
+                `;
                 break;
 
             case "Weekly":
                 dateCondition = `
-					AND practice_history.started_at >= DATE_TRUNC('week', CURRENT_DATE)
-				`;
+                    AND practice_history.started_at >= DATE_TRUNC('week', CURRENT_DATE)
+                `;
                 break;
 
             case "Monthly":
                 dateCondition = `
-					AND practice_history.started_at >= DATE_TRUNC('month', CURRENT_DATE)
-				`;
+                    AND practice_history.started_at >= DATE_TRUNC('month', CURRENT_DATE)
+                `;
                 break;
 
             case "All Time":
@@ -111,10 +131,9 @@ export const allUserDataController = async (request, response) => {
                 break;
 
             default:
-                response.status(400).json({
+                return response.status(400).json({
                     message: "Invalid leaderboard filter",
                 });
-                return;
         }
 
         const result = await pool.query(
@@ -141,20 +160,19 @@ export const allUserDataController = async (request, response) => {
         );
 
         if (!result) {
-            response.status(400).json({
+            return response.status(400).json({
                 message: "Failed to Fetch Data"
             });
-            return;
         }
 
-        response.status(200).json({
+        return response.status(200).json({
             message: "Data successfully fetched",
             data: result.rows
-        })
+        });
     }
     catch (error) {
         console.error(error); 
-        response.status(400).json({
+        return response.status(400).json({
             error: error
         });
     }
