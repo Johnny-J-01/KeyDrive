@@ -131,6 +131,17 @@ export default function Practice() {
 		}
 	}, [startTime, isFinished, mode, timeLimit]);
 
+	useEffect(() => {
+		const handleKeyDown = (event) => {
+			if (event.key !== "Enter") return;
+			event.preventDefault();
+			resetTest();
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [passageWordData, mode, timeLimit, wordLimit]);
+
 	const resetTest = () => {
 		// Pick a random passage
 		if (!passageWordData) return;
@@ -287,12 +298,6 @@ export default function Practice() {
 				</div>
 			)}
 
-			{/* {guestNotice && (
-				<div className="text-center mb-6 w-full max-w-2xl rounded-xl border-white-500/3 px-4 py-3 text-red-600 font-bold">
-					Guest account — please login to save your results.
-				</div>
-			)} */}
-
 			{/* Settings Bar */}
 			{!isFinished && (
 				<div className="flex items-center gap-6 p-4 rounded-xl bg-surface border border-borderMain mb-12 animate-in fade-in">
@@ -374,7 +379,7 @@ export default function Practice() {
 					</button>
 				</div>
 			) : (
-				<div className="w-full relative group">
+				<div className="w-full relative">
 					<div className="flex justify-between items-center mb-6 text-xl font-medium text-primary">
 						<span>
 							{mode === "time"
@@ -382,35 +387,6 @@ export default function Practice() {
 								: `${input.split(" ").length}/${wordLimit}`}
 						</span>
 					</div>
-
-					{/* <div
-						className="text-2xl leading-loose font-mono text-textMuted break-words relative z-10"
-						onClick={() => inputRef.current?.focus()}
-					>
-						{passage.split("").map((char, i) => {
-							let color = "";
-							if (i < input.length) {
-								color =
-									input[i] === char
-										? "text-white"
-										: "text-error bg-error/20";
-							}
-							const isCurrent = i === input.length;
-							return (
-								<span
-									key={i}
-									className={clsx(
-										color,
-										isCurrent &&
-											"border-b-2 border-primary animate-pulse",
-									)}
-								>
-									{char}
-								</span>
-							);
-						})}
-					</div> */}
-
 					<PassageViewport
 						passage={passage}
 						input={input}
@@ -427,8 +403,9 @@ export default function Practice() {
 						autoFocus
 					/>
 
-					<div className="flex justify-center mt-12 opacity-0 group-hover:opacity-100 transition-opacity">
+					<div className="flex justify-center mt-6">
 						<button
+							type="button"
 							onClick={resetTest}
 							className="flex items-center gap-2 px-4 py-2 text-textMuted hover:text-white bg-surface border border-borderMain rounded-lg transition-colors"
 						>

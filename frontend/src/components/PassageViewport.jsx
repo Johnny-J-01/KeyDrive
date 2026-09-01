@@ -136,7 +136,7 @@ export default function PassageViewport({ passage, input, onFocusInput }) {
 			<div
 				ref={measureRef}
 				aria-hidden
-				className="invisible absolute top-0 left-0 w-full pointer-events-none select-none text-2xl leading-loose font-mono"
+				className="invisible absolute top-0 left-0 w-full pointer-events-none select-none text-2xl leading-none font-mono"
 			>
 				{words.map((word, index) => (
 					<span
@@ -151,8 +151,10 @@ export default function PassageViewport({ passage, input, onFocusInput }) {
 			</div>
 
 			<div
-				className="overflow-hidden"
-				style={{ height: `calc(3rem * ${VISIBLE_LINE_COUNT})` }}
+				className="w-full overflow-hidden"
+				style={{
+					height: `${Math.min(Math.max(visibleLines.length, 1), VISIBLE_LINE_COUNT) * 3}rem`,
+				}}
 				onClick={onFocusInput}
 			>
 				<div className="text-2xl leading-loose font-mono text-textMuted">

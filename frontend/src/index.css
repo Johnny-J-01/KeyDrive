@@ -2,8 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
+body,
+#root {
+  min-height: 100%;
+  height: auto;
+  background: transparent;
+}
+
 body {
-  @apply bg-background text-textMain m-0 p-0 font-sans;
+  @apply text-textMain m-0 p-0 font-sans;
+  background: transparent;
 }
 
 /* Custom scrollbar for modern feel */
