@@ -14,7 +14,7 @@ import LiveRace from "./LiveRace";
 import { useAuth } from "../main";
 
 export default function Race() {
-	const { fetchWithAuth } = useAuth();
+	const { fetchWithAuth, user: authUser, accessToken } = useAuth();
 	const [rooms, setRooms] = useState([]);
 	const [userData, setUserData] = useState({
 		id: `${crypto.randomUUID()}`,
@@ -30,6 +30,16 @@ export default function Race() {
 	useEffect(() => {
 		const fetchUserData = async () => {
 			try {
+				const hasLoggedInUser = Boolean(authUser || accessToken);
+				if (!hasLoggedInUser) {
+					setUserData({
+						id: `${crypto.randomUUID()}`,
+						username: "guest",
+					});
+					setIsLoading(false);
+					return;
+				}
+
 				const response = await fetchWithAuth(
 					"http://localhost:3000/profile",
 					{
@@ -37,28 +47,30 @@ export default function Race() {
 					},
 				);
 				if (!response.ok) {
-					toast.error("Guest Account");
-					console.log("Guest data: ", userData);
+					setUserData({
+						id: `${crypto.randomUUID()}`,
+						username: "guest",
+					});
 					return;
 				}
 				const loggedInUserData = await response.json();
-				console.log(
-					"Fetched user data:",
-					loggedInUserData.data.rows[0],
-				);
 				setUserData({
 					id: loggedInUserData.data.rows[0].id,
 					username: loggedInUserData.data.rows[0].username,
 				});
 			} catch (error) {
-				toast.error("Error fetching user data");
+				console.error("Error fetching user data", error);
+				setUserData({
+					id: `${crypto.randomUUID()}`,
+					username: "guest",
+				});
 			} finally {
 				setIsLoading(false);
 			}
 		};
 
 		fetchUserData();
-	}, [fetchWithAuth]);
+	}, [accessToken, authUser, fetchWithAuth]);
 
 	// WebSocket connection
 	useEffect(() => {
@@ -113,6 +125,11 @@ export default function Race() {
 	}, []);
 
 	const handleCreateRoom = (roomData) => {
+		if (!authUser && !accessToken) {
+			toast.error("Please login to compete with other players.");
+			return;
+		}
+
 		const newRoom = {
 			id: generateRoomCode(),
 			name: roomData.name,
@@ -141,6 +158,11 @@ export default function Race() {
 	};
 
 	const handleJoinPublicRoom = (room) => {
+		if (!authUser && !accessToken) {
+			toast.error("Please login first to compete with other players.");
+			return;
+		}
+
 		if (room.playerCount >= room.capacity) {
 			toast.message("This room is full.");
 			return;
@@ -285,7 +307,15 @@ export default function Race() {
 
 					<div className="flex gap-3">
 						<button
-							onClick={() => setShowJoinModal(true)}
+							onClick={() => {
+								if (!authUser && !accessToken) {
+									toast.error(
+										"Please login first to compete with other players.",
+									);
+									return;
+								}
+								setShowJoinModal(true);
+							}}
 							className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg border border-borderMain text-white font-semibold hover:bg-surface transition-colors"
 						>
 							<KeyRound className="w-4 h-4" />
@@ -293,7 +323,15 @@ export default function Race() {
 						</button>
 
 						<button
-							onClick={() => setShowCreateModal(true)}
+							onClick={() => {
+								if (!authUser && !accessToken) {
+									toast.error(
+										"Please login to compete with other players.",
+									);
+									return;
+								}
+								setShowCreateModal(true);
+							}}
 							className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition-colors"
 						>
 							<Plus className="w-4 h-4" />
