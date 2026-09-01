@@ -293,7 +293,7 @@ export const userAuthRefreshController = async (request, response) => {
             await client.query("COMMIT");
 
             response.clearCookie("refreshToken", {
-                path: "/auth"
+                path: "/"
             });
 
             return response.status(401).json({
@@ -314,7 +314,7 @@ export const userAuthRefreshController = async (request, response) => {
             await client.query("COMMIT");
 
             response.clearCookie("refreshToken", {
-                path: "/auth"
+                path: "/"
             });
 
             return response.status(401).json({
@@ -423,7 +423,7 @@ export const userAuthLogoutController = async (request, response) => {
         );
 
         response.clearCookie("refreshToken", {
-            path: "/auth"
+            path: "/"
         });
 
         return response.status(200).json({

@@ -85,6 +85,7 @@ export const userStatsGetController = async (request, response) => {
 export const allUserDataController = async (request, response) => {
     try {
         const { filter } = request.query;
+        console.log(filter);
         let dateCondition = "";
         switch (filter) {
             case "Daily":
