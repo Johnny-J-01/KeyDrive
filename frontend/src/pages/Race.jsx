@@ -11,8 +11,10 @@ import {
 import RoomLobby from "../pages/RoomLobby";
 import { toast } from "sonner";
 import LiveRace from "./LiveRace";
+import { useAuth } from "../main";
 
 export default function Race() {
+	const { fetchWithAuth } = useAuth();
 	const [rooms, setRooms] = useState([]);
 	const [userData, setUserData] = useState({
 		id: `${crypto.randomUUID()}`,
@@ -28,10 +30,12 @@ export default function Race() {
 	useEffect(() => {
 		const fetchUserData = async () => {
 			try {
-				const response = await fetch("http://localhost:3000/profile", {
-					method: "GET",
-					credentials: "include",
-				});
+				const response = await fetchWithAuth(
+					"http://localhost:3000/profile",
+					{
+						method: "GET",
+					},
+				);
 				if (!response.ok) {
 					toast.error("Guest Account");
 					console.log("Guest data: ", userData);
@@ -54,7 +58,7 @@ export default function Race() {
 		};
 
 		fetchUserData();
-	}, []);
+	}, [fetchWithAuth]);
 
 	// WebSocket connection
 	useEffect(() => {

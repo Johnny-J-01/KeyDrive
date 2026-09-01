@@ -18,26 +18,55 @@ export default function Login() {
 
 	const { login } = useAuth();
 
+	// const handleLoginFormSubmit = async (event) => {
+	// 	event.preventDefault();
+	// 	const response = await fetch("http://localhost:3000/userAuthLogin", {
+	// 		method: "POST",
+	// 		headers: {
+	// 			"content-type": "application/json",
+	// 		},
+	// 		body: JSON.stringify(userFormData),
+	// 		credentials: "include",
+	// 	});
+
+	// 	if (!response.ok) {
+	// 		toast.error("failed to login");
+	// 		return;
+	// 	}
+
+	// 	const data = await response.json();
+	// 	login(data.user);
+	// 	toast.success("Successfully Logged in!");
+	// 	navigate("/practice");
+	// };
+
 	const handleLoginFormSubmit = async (event) => {
 		event.preventDefault();
-		const response = await fetch("http://localhost:3000/userAuthLogin", {
-			method: "POST",
-			headers: {
-				"content-type": "application/json",
-			},
-			body: JSON.stringify(userFormData),
-			credentials: "include",
-		});
+		try {
+			const response = await fetch(
+				"http://localhost:3000/userAuthLogin",
+				{
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify(userFormData),
+					credentials: "include",
+				},
+			);
 
-		if (!response.ok) {
-			toast.error("failed to login");
-			return;
+			const data = await response.json();
+
+			if (!response.ok) {
+				toast.error(data.message || "Failed to login");
+				return;
+			}
+
+			login(data.user, data.accessToken);
+			toast.success("Successfully Logged in!");
+			navigate("/practice");
+		} catch (error) {
+			console.error("Login error:", error);
+			toast.error("Unable to connect to the server");
 		}
-
-		const data = await response.json();
-		login(data.user);
-		toast.success("Successfully Logged in!");
-		navigate("/practice");
 	};
 
 	return (

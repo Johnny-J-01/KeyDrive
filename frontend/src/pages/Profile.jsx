@@ -1,48 +1,58 @@
 import { Activity, Clock, Trophy, Target, Star, Flame } from "lucide-react";
-import { mockUsers } from "../data/mock";
 import { useEffect, useState } from "react";
-import { createRef } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../main";
 
 export default function Profile() {
-	const user = mockUsers[0];
 	const [userPersonalData, setUserPersonalData] = useState(null);
 	const [userStatData, setUserStatData] = useState(null);
 	const navigate = useNavigate();
+	const { accessToken, loading, fetchWithAuth } = useAuth();
 
 	useEffect(() => {
+		if (loading || !accessToken) {
+			return;
+		}
+
 		const fetchData = async () => {
-			const response = await fetch("http://localhost:3000/profile", {
-				method: "GET",
-				credentials: "include",
-			});
+			const response = await fetchWithAuth(
+				"http://localhost:3000/profile",
+				{
+					method: "GET",
+				},
+			);
 
 			const data = await response.json();
+
 			if (!response.ok) {
 				toast.error("Unable to fetch User Data");
 				return;
 			}
+
 			setUserPersonalData(data.data.rows[0]);
 		};
 
 		const fetchUserStatData = async () => {
-			const response = await fetch("http://localhost:3000/stats", {
-				method: "GET",
-				credentials: "include",
-			});
+			const response = await fetchWithAuth(
+				"http://localhost:3000/stats",
+				{
+					method: "GET",
+				},
+			);
 
 			if (!response.ok) {
 				toast.error("Unable to fetch User Stats Data");
 				return;
 			}
+
 			const statData = await response.json();
 			setUserStatData(statData.data);
 		};
 
 		fetchData();
 		fetchUserStatData();
-	}, []);
+	}, [accessToken, loading, fetchWithAuth]);
 
 	const handleEditButton = () => {
 		navigate("/EditProfile");

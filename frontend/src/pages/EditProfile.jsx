@@ -18,17 +18,19 @@ function EditProfile() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [newUserData, setNewUserData] = useState(null);
 	const [showPassword, setShowPassword] = useState(false);
-	const { user, logout } = useAuth();
+	const { user, logout, fetchWithAuth } = useAuth();
 
 	const navigate = useNavigate();
 
 	useEffect(() => {
 		const fetchUserPeronsalData = async () => {
 			try {
-				const response = await fetch("http://localhost:3000/profile", {
-					method: "GET",
-					credentials: "include",
-				});
+				const response = await fetchWithAuth(
+					"http://localhost:3000/profile",
+					{
+						method: "GET",
+					},
+				);
 
 				if (!response.ok) {
 					toast.error("Failed to Fetch User Data");
@@ -36,7 +38,6 @@ function EditProfile() {
 				}
 
 				const data = await response.json();
-
 				setNewUserData(data.data.rows[0]);
 			} catch (error) {
 				console.error("Failed to fetch user Data:", error);
@@ -47,7 +48,7 @@ function EditProfile() {
 		};
 
 		fetchUserPeronsalData();
-	}, []);
+	}, [fetchWithAuth]);
 
 	const handleEditFormChange = (event) => {
 		const { name, value } = event.target;
@@ -61,14 +62,16 @@ function EditProfile() {
 	const handleSaveChanges = async (event) => {
 		event.preventDefault();
 
-		const response = await fetch("http://localhost:3000/userEditProfile", {
-			method: "POST",
-			headers: {
-				"content-type": "application/json",
+		const response = await fetchWithAuth(
+			"http://localhost:3000/userEditProfile",
+			{
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+				},
+				body: JSON.stringify(newUserData),
 			},
-			body: JSON.stringify(newUserData),
-			credentials: "include",
-		});
+		);
 
 		if (!response.ok) {
 			toast.error("Failed to Save!");
@@ -94,10 +97,12 @@ function EditProfile() {
 	};
 
 	const handleDeleteAccount = async () => {
-		const response = await fetch("http://localhost:3000/userAuthDelete", {
-			method: "GET",
-			credentials: "include",
-		});
+		const response = await fetchWithAuth(
+			"http://localhost:3000/userAuthDelete",
+			{
+				method: "GET",
+			},
+		);
 
 		if (!response.ok) {
 			toast.error("Failed to Delete the account");

@@ -2,43 +2,48 @@ import { useEffect, useState } from "react";
 import { Trophy, Search, Medal } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
+import { useAuth } from "../main";
 
 const FILTERS = ["Daily", "Weekly", "Monthly", "All Time"];
 
 export default function Leaderboard() {
 	const [activeFilter, setActiveFilter] = useState("All Time");
 	const [search, setSearch] = useState("");
-	const [allUsersData, setAllUsersData] = useState(null);
+	const [allUsersData, setAllUsersData] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const { fetchWithAuth, loading } = useAuth();
 
 	useEffect(() => {
 		const fetchAllUsersData = async () => {
+			setIsLoading(true);
 			try {
-				const response = await fetch(
+				const response = await fetchWithAuth(
 					`http://localhost:3000/users/all/data?filter=${encodeURIComponent(activeFilter)}`,
-					{
-						method: "GET",
-						credentials: "include",
-					},
+					{ method: "GET" },
 				);
 
 				if (!response.ok) {
-					toast.error("Failed to fetch Data");
+					toast.error("Please log in to view the leaderboard");
+					setAllUsersData([]);
 					return;
 				}
 
 				const data = await response.json();
-				setAllUsersData(data.data);
+				setAllUsersData(Array.isArray(data.data) ? data.data : []);
 			} catch (error) {
-				toast.error("Failed to Fetch the data");
+				console.error("Leaderboard fetch error:", error);
+				toast.error("Failed to fetch leaderboard data");
 			} finally {
-				setIsLoading(!isLoading);
+				setIsLoading(false);
 			}
 		};
-		fetchAllUsersData();
-	}, []);
 
-	if (isLoading == true) {
+		if (!loading) {
+			fetchAllUsersData();
+		}
+	}, [activeFilter, fetchWithAuth, loading]);
+
+	if (isLoading || loading) {
 		return (
 			<div className="flex min-h-[400px] items-center justify-center">
 				<p className="text-textMuted">Loading User Data...</p>

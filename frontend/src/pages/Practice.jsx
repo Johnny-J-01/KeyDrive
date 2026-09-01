@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { mockPassages } from "../data/mock";
 import { toast } from "sonner";
 import PassageViewport from "../components/PassageViewport";
+import { useAuth } from "../main";
 
 const TIME_MODES = [15, 30, 60, 120];
 const WORD_MODES = [10, 25, 50, 100];
@@ -26,13 +27,18 @@ export default function Practice() {
 	const [userPersonalData, setUserPersonalData] = useState(null);
 	const [passageWordData, setPassageWordData] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
+	const { accessToken, fetchWithAuth } = useAuth();
 
 	useEffect(() => {
+		if (!accessToken) return;
 		const fetchUserData = async () => {
-			const response = await fetch("http://localhost:3000/profile", {
-				method: "GET",
-				credentials: "include",
-			});
+			const response = await fetchWithAuth(
+				"http://localhost:3000/profile",
+				{
+					method: "GET",
+				},
+			);
+			console.log(response);
 			if (!response.ok) {
 				toast.error("Please Login to save your results");
 				toast.error("Guest Mode, test taken won't be saved!");
@@ -43,17 +49,14 @@ export default function Practice() {
 		};
 
 		fetchUserData();
-	}, []);
+	}, [accessToken, fetchWithAuth]);
 
 	useEffect(() => {
 		const fetchTestWords = async () => {
 			try {
-				const response = await fetch(
+				const response = await fetchWithAuth(
 					"http://localhost:3000/practice/words",
-					{
-						method: "GET",
-						credentials: "include",
-					},
+					{ method: "GET", requireAuth: false },
 				);
 				if (!response.ok) {
 					toast.error("Unable to fetch the words!!");
@@ -70,7 +73,7 @@ export default function Practice() {
 			}
 		};
 		fetchTestWords();
-	}, []);
+	}, [fetchWithAuth]);
 
 	// Initialize test
 	useEffect(() => {
@@ -133,13 +136,12 @@ export default function Practice() {
 	};
 
 	const postUserData = async (userData) => {
-		const response = await fetch("http://localhost:3000/stats", {
+		const response = await fetchWithAuth("http://localhost:3000/stats", {
 			method: "POST",
 			headers: {
 				"content-type": "application/json",
 			},
 			body: JSON.stringify(userData),
-			credentials: "include",
 		});
 
 		if (!response.ok) {
