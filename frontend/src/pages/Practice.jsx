@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { RotateCcw, Clock, Hash } from "lucide-react";
+import { RotateCcw, Clock, Hash, TriangleAlert } from "lucide-react";
 import clsx from "clsx";
 import { mockPassages } from "../data/mock";
 import { toast } from "sonner";
@@ -27,10 +27,18 @@ export default function Practice() {
 	const [userPersonalData, setUserPersonalData] = useState(null);
 	const [passageWordData, setPassageWordData] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
+	const [guestNotice, setGuestNotice] = useState("");
 	const { accessToken, fetchWithAuth } = useAuth();
 
 	useEffect(() => {
-		if (!accessToken) return;
+		if (!accessToken) {
+			setUserPersonalData(null);
+			setGuestNotice(
+				"Guest account — please login to save your results.",
+			);
+			return;
+		}
+
 		const fetchUserData = async () => {
 			const response = await fetchWithAuth(
 				"http://localhost:3000/profile",
@@ -38,14 +46,18 @@ export default function Practice() {
 					method: "GET",
 				},
 			);
-			console.log(response);
+
 			if (!response.ok) {
-				toast.error("Please Login to save your results");
-				toast.error("Guest Mode, test taken won't be saved!");
+				setUserPersonalData(null);
+				setGuestNotice(
+					"Guest account — please login to save your results.",
+				);
 				return;
 			}
+
 			const data = await response.json();
 			setUserPersonalData(data.data.rows[0]);
+			setGuestNotice("");
 		};
 
 		fetchUserData();
@@ -189,8 +201,21 @@ export default function Practice() {
 				? Math.round((correctChars / currentInput.length) * 100)
 				: 0;
 
+		if (!userPersonalData || !accessToken) {
+			setGuestNotice(
+				"Guest account — please login to save your results.",
+			);
+			setStats({
+				wpm,
+				accuracy,
+				errors,
+				chars: currentInput.length,
+			});
+			return;
+		}
+
 		const userTestData = {
-			user_id: !userPersonalData ? "guest" : userPersonalData.id,
+			user_id: userPersonalData.id,
 			mode: mode,
 			word_count: wordLimit,
 			duration_seconds: elapsed,
@@ -253,6 +278,21 @@ export default function Practice() {
 
 	return (
 		<div className="flex flex-col items-center max-w-4xl mx-auto py-12">
+			{guestNotice && (
+				<div className="w-full max-w-2xl mb-6 flex items-center justify-center gap-3 rounded-xl border border-red-600 bg-red-500/10 px-4 py-3 text-left text-red-400 font-semibold">
+					<TriangleAlert className="w-5 h-5 shrink-0" />
+					<span>
+						Guest account — please login to save your results.
+					</span>
+				</div>
+			)}
+
+			{/* {guestNotice && (
+				<div className="text-center mb-6 w-full max-w-2xl rounded-xl border-white-500/3 px-4 py-3 text-red-600 font-bold">
+					Guest account — please login to save your results.
+				</div>
+			)} */}
+
 			{/* Settings Bar */}
 			{!isFinished && (
 				<div className="flex items-center gap-6 p-4 rounded-xl bg-surface border border-borderMain mb-12 animate-in fade-in">
