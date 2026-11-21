@@ -21,7 +21,7 @@ dotenv.config();
 
 const app = express(); 
 const server = createServer(app);
-const wss = new WebSocketServer({ noServer: True });
+const wss = new WebSocketServer({ noServer: true });
 const PORT = process.env.PORT; 
 
 // middleware: 
