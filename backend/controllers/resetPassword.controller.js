@@ -1,8 +1,7 @@
-import { userLoginSchema} from '../validation/userAuth.validation.js';
 import { generateResetToken } from "../utils/JWTtoken.utils.js";
 import { sendEmail } from '../services/mail.services.js';
 import { resetPasswordTemplate } from '../templates/resetPassword.template.js';
-import jwt from 'jsonwebtoken'; 
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt'
 import pool from '../model/db.js'
 
@@ -19,7 +18,7 @@ export const forgotPasswordController = async (request, response) => {
 
         const result = await pool.query(
             `
-                SELECT *
+                SELECT id, username, email
                 FROM users
                 WHERE email = $1
             `,
@@ -33,23 +32,23 @@ export const forgotPasswordController = async (request, response) => {
             });
         }
 
-        const resetToken = generateResetToken(result.rows[0].id);
+        const user = result.rows[0];
+        const resetToken = generateResetToken(user.id);
         const resetLink = `http://localhost:5173/reset-password?token=${resetToken}`;
 
         try {
             await sendEmail({
-                to: result.rows[0].email,
+                to: user.email,
                 subject: "Reset Your Password",
                 html: resetPasswordTemplate(
-                    result.rows[0].username,
+                    user.username,
                     resetLink
                 ),
             });
 
             return response.status(200).json({
                 success: true,
-                message: "Password reset link sent to your email",
-                user: result.rows[0]
+                message: "Password reset link sent to your email"
             });
         } catch (error) {
             console.log(`Failed to send the Reset email: `, error.message);
@@ -86,6 +85,14 @@ export const resetPasswordController = async (request, response) => {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        if (decoded.purpose !== "password_reset") {
+            return response.status(401).json({
+                success: false,
+                message: "Invalid token type"
+            });
+        }
+
         const userId = decoded.userId;
 
         const hashedNewPassword = await bcrypt.hash(password.trim(), 10);
@@ -96,7 +103,7 @@ export const resetPasswordController = async (request, response) => {
                 SET
                     password_hash = $1
                 WHERE id = $2
-                RETURNING *;
+                RETURNING id;
             `,
             [hashedNewPassword, userId]
         );

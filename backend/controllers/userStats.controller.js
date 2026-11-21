@@ -10,7 +10,7 @@ export const userProfileController = async (request, response) => {
         const userPersonalData = await pool.query(
             `
                 SELECT * 
-                FROM users 
+                FROM users
                 WHERE id = $1
             `, [request.user.userId]
         )
@@ -48,7 +48,7 @@ export const userStatsPostController = async (request, response) => {
             `
                 INSERT INTO practice_history (user_id, mode, word_count, duration_seconds, wpm, accuracy, errors, started_at)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                RETURNING *; 
+                RETURNING *;
             `, [request.user.userId, data.mode, data.word_count, data.duration_seconds, data.wpm, data.accuracy, data.errors, data.started_at]
         );
 
@@ -78,7 +78,7 @@ export const userStatsGetController = async (request, response) => {
 
         const result = await pool.query(
             `
-                SELECT 
+                SELECT
                     ROUND(AVG(wpm), 2) as avg_wpm,
                     ROUND(AVG(accuracy), 2) as avg_accuracy,
                     COUNT(*) as total_sessions
@@ -125,7 +125,13 @@ export const allUserDataController = async (request, response) => {
 
             const accessToken = authHeader.split(" ")[1];
             try {
-                jwt.verify(accessToken, process.env.JWT_SECRET);
+                const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
+                if (decoded.purpose !== "access") {
+                    return response.status(401).json({
+                        success: false,
+                        message: "Invalid token type",
+                    });
+                }
             } catch (error) {
                 return response.status(401).json({
                     success: false,
