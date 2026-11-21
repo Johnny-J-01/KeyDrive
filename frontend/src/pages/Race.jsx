@@ -116,32 +116,62 @@ export default function Race() {
 						setRooms(message.payload);
 					}
 					if (message.type === "room:created") {
-						setRooms((currentRooms) => [...currentRooms, message.payload]);
+						setRooms((currentRooms) =>
+							currentRooms.some((r) => r.id === message.payload.id)
+								? currentRooms
+								: [...currentRooms, message.payload],
+						);
 					}
 					if (message.type === "room:deleted") {
 						setRooms((currentRooms) =>
 							currentRooms.filter((room) => room.id !== message.payload),
 						);
-						setActiveRoom(null);
+						setActiveRoom((currentActiveRoom) => {
+							if (currentActiveRoom?.id === message.payload) {
+								setGameStarted(false);
+								return null;
+							}
+							return currentActiveRoom;
+						});
 					}
 					if (message.type === "room:joined") {
 						setActiveRoom(message.payload);
+						setGameStarted(false);
 					}
 					if (message.type === "room:join:error") {
 						toast.error(message.payload);
 					}
 					if (message.type === "room:left") {
 						setActiveRoom(null);
+						setGameStarted(false);
 					}
 					if (
 						message.type === "room:updated" ||
 						message.type === "room:progress_updated"
 					) {
-						setActiveRoom(message.payload);
+						setRooms((currentRooms) =>
+							currentRooms.map((room) =>
+								room.id === message.payload.id ? message.payload : room,
+							),
+						);
+						setActiveRoom((currentActiveRoom) => {
+							if (currentActiveRoom?.id === message.payload.id) {
+								if (message.payload.status === "waiting") {
+									setGameStarted(false);
+								}
+								return message.payload;
+							}
+							return currentActiveRoom;
+						});
 					}
 					if (message.type === "room:start") {
-						setActiveRoom(message.payload);
-						setGameStarted(true);
+						setActiveRoom((currentActiveRoom) => {
+							if (currentActiveRoom?.id === message.payload.id) {
+								setGameStarted(true);
+								return message.payload;
+							}
+							return currentActiveRoom;
+						});
 					}
 					if (message.type === "error") {
 						toast.error(message.payload);

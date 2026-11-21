@@ -2,6 +2,8 @@ import { WebSocket } from "ws";
 
 const rooms = [];
 
+let wssInstance = null;
+
 const roomSockets = new Map();
 
 function sanitizeRoom(room) {
@@ -46,9 +48,67 @@ function removeSocketFromRoom(socket) {
 		}
 	}
 	socket._roomId = null;
+
+	const roomIndex = rooms.findIndex((r) => r.id === roomId);
+	if (roomIndex === -1) return;
+	const room = rooms[roomIndex];
+
+	if (room.adminId === socket.userId) {
+		rooms.splice(roomIndex, 1);
+
+		const remainingSockets = roomSockets.get(room.id);
+		if (remainingSockets) {
+			for (const s of remainingSockets) {
+				s._roomId = null;
+			}
+			roomSockets.delete(room.id);
+		}
+
+		wssInstance?.clients.forEach((client) => {
+			if (client.readyState === WebSocket.OPEN) {
+				sendTo(client, {
+					type: "room:deleted",
+					payload: room.id,
+				});
+			}
+		});
+	} else {
+		room.players = room.players.filter(
+			(player) => player.id !== socket.userId,
+		);
+		room.playerCount = room.players.length;
+
+		if (room.playerCount === 0) {
+			rooms.splice(roomIndex, 1);
+			roomSockets.delete(room.id);
+			wssInstance?.clients.forEach((client) => {
+				if (client.readyState === WebSocket.OPEN) {
+					sendTo(client, {
+						type: "room:deleted",
+						payload: room.id,
+					});
+				}
+			});
+		} else {
+			if (room.status === "running" && room.players.every((p) => p.isFinished)) {
+				room.status = "waiting";
+			}
+
+			const updated = sanitizeRoom(room);
+			wssInstance?.clients.forEach((client) => {
+				if (client.readyState === WebSocket.OPEN) {
+					sendTo(client, {
+						type: "room:updated",
+						payload: updated,
+					});
+				}
+			});
+		}
+	}
 }
 
 export const setUpWebSocketServer = (wss) => {
+	wssInstance = wss;
 	wss.on("connection", (socket) => {
 		if (!socket.userId || !socket.username) {
 			socket.close(4001, "Authentication required");
@@ -134,6 +194,11 @@ export const setUpWebSocketServer = (wss) => {
 				addSocketToRoom(createdRoom.id, socket);
 
 				const sanitized = sanitizeRoom(createdRoom);
+				sendTo(socket, {
+					type: "room:joined",
+					payload: sanitized,
+				});
+
 				wss.clients.forEach((client) => {
 					if (client.readyState === WebSocket.OPEN) {
 						sendTo(client, {
@@ -221,19 +286,20 @@ export const setUpWebSocketServer = (wss) => {
 
 				addSocketToRoom(findRoomToJoin.id, socket);
 
+				const sanitized = sanitizeRoom(findRoomToJoin);
 				sendTo(socket, {
 					type: "room:joined",
-					payload: sanitizeRoom(findRoomToJoin),
+					payload: sanitized,
 				});
 
-				broadcastToRoom(
-					findRoomToJoin.id,
-					{
-						type: "room:updated",
-						payload: sanitizeRoom(findRoomToJoin),
-					},
-					socket,
-				);
+				wssInstance?.clients.forEach((client) => {
+					if (client.readyState === WebSocket.OPEN) {
+						sendTo(client, {
+							type: "room:updated",
+							payload: sanitized,
+						});
+					}
+				});
 				return;
 			}
 
@@ -273,16 +339,6 @@ export const setUpWebSocketServer = (wss) => {
 						rooms.splice(index, 1);
 					}
 
-					broadcastToRoom(findRoomToLeave.id, {
-						type: "room:deleted",
-						payload: findRoomToLeave.id,
-					});
-
-					sendTo(socket, {
-						type: "room:deleted",
-						payload: findRoomToLeave.id,
-					});
-
 					const roomSocketSet = roomSockets.get(findRoomToLeave.id);
 					if (roomSocketSet) {
 						for (const s of roomSocketSet) {
@@ -290,26 +346,68 @@ export const setUpWebSocketServer = (wss) => {
 						}
 						roomSockets.delete(findRoomToLeave.id);
 					}
+
+					wssInstance?.clients.forEach((client) => {
+						if (client.readyState === WebSocket.OPEN) {
+							sendTo(client, {
+								type: "room:deleted",
+								payload: findRoomToLeave.id,
+							});
+						}
+					});
+					return;
 				} else {
 					findRoomToLeave.players = findRoomToLeave.players.filter(
 						(player) => player.id !== socket.userId,
 					);
 					findRoomToLeave.playerCount =
-						findRoomToLeave.playerCount - 1;
+						findRoomToLeave.players.length;
 
-					removeSocketFromRoom(socket);
+					const sockets = roomSockets.get(findRoomToLeave.id);
+					if (sockets) {
+						sockets.delete(socket);
+						if (sockets.size === 0) {
+							roomSockets.delete(findRoomToLeave.id);
+						}
+					}
+					socket._roomId = null;
 
 					sendTo(socket, {
 						type: "room:left",
 						payload: findRoomToLeave.id,
 					});
 
-					broadcastToRoom(findRoomToLeave.id, {
-						type: "room:updated",
-						payload: sanitizeRoom(findRoomToLeave),
-					});
+					if (findRoomToLeave.playerCount === 0) {
+						const emptyIndex = rooms.findIndex((r) => r.id === findRoomToLeave.id);
+						if (emptyIndex !== -1) {
+							rooms.splice(emptyIndex, 1);
+						}
+						roomSockets.delete(findRoomToLeave.id);
+						wssInstance?.clients.forEach((client) => {
+							if (client.readyState === WebSocket.OPEN) {
+								sendTo(client, {
+									type: "room:deleted",
+									payload: findRoomToLeave.id,
+								});
+							}
+						});
+					} else {
+						if (findRoomToLeave.status === "running" && findRoomToLeave.players.every((p) => p.isFinished)) {
+							findRoomToLeave.status = "waiting";
+						}
+
+						const updated = sanitizeRoom(findRoomToLeave);
+						wssInstance?.clients.forEach((client) => {
+							if (client.readyState === WebSocket.OPEN) {
+								sendTo(client, {
+									type: "room:updated",
+									payload: updated,
+								});
+							}
+						});
+					}
+					return;
 				}
-				return;
 			}
 
 			if (type === "room:delete") {
@@ -339,16 +437,6 @@ export const setUpWebSocketServer = (wss) => {
 					rooms.splice(index, 1);
 				}
 
-				broadcastToRoom(room.id, {
-					type: "room:deleted",
-					payload: room.id,
-				});
-
-				sendTo(socket, {
-					type: "room:deleted",
-					payload: room.id,
-				});
-
 				const roomSocketSet = roomSockets.get(room.id);
 				if (roomSocketSet) {
 					for (const s of roomSocketSet) {
@@ -356,6 +444,15 @@ export const setUpWebSocketServer = (wss) => {
 					}
 					roomSockets.delete(room.id);
 				}
+
+				wssInstance?.clients.forEach((client) => {
+					if (client.readyState === WebSocket.OPEN) {
+						sendTo(client, {
+							type: "room:deleted",
+							payload: room.id,
+						});
+					}
+				});
 				return;
 			}
 
@@ -389,7 +486,21 @@ export const setUpWebSocketServer = (wss) => {
 					return;
 				}
 
+				if (room.status === "running") {
+					sendTo(socket, {
+						type: "error",
+						payload: "Race is already running.",
+					});
+					return;
+				}
+
 				room.status = "running";
+				room.players.forEach((p) => {
+					delete p.progress;
+					delete p.wpm;
+					delete p.isFinished;
+					delete p.rank;
+				});
 				if (payload.passage) {
 					room.passage = payload.passage;
 				}
@@ -398,9 +509,14 @@ export const setUpWebSocketServer = (wss) => {
 					type: "room:start",
 					payload: sanitizeRoom(room),
 				});
-				sendTo(socket, {
-					type: "room:start",
-					payload: sanitizeRoom(room),
+
+				wssInstance?.clients.forEach((client) => {
+					if (client.readyState === WebSocket.OPEN) {
+						sendTo(client, {
+							type: "room:updated",
+							payload: sanitizeRoom(room),
+						});
+					}
 				});
 				return;
 			}
@@ -440,7 +556,19 @@ export const setUpWebSocketServer = (wss) => {
 					payload: sanitizeRoom(room),
 				};
 				broadcastToRoom(room.id, updateMessage);
-				sendTo(socket, updateMessage);
+
+				if (room.players.length > 0 && room.players.every((p) => p.isFinished)) {
+					room.status = "waiting";
+					const finishedMessage = {
+						type: "room:updated",
+						payload: sanitizeRoom(room),
+					};
+					wssInstance?.clients.forEach((client) => {
+						if (client.readyState === WebSocket.OPEN) {
+							sendTo(client, finishedMessage);
+						}
+					});
+				}
 				return;
 			}
 

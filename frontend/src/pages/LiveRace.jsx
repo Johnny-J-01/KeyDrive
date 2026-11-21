@@ -110,7 +110,6 @@ export default function LiveRace({ room, userData, socketRef }) {
 					type: "room:leave",
 					payload: {
 						roomId: room.id,
-						userData: userData,
 					},
 				}),
 			);
