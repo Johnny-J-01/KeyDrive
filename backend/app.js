@@ -12,14 +12,16 @@ import statsRouter from '../backend/routes/userStats.routes.js';
 import practiceRouter from '../backend/routes/practice.routes.js'; 
 import resetPasswordRouter from '../backend/routes/ResetPasword.route.js'; 
 import googleRouter from '../backend/routes/OAuth.route.js';
+import wsTicketRouter from '../backend/routes/wsTicket.routes.js';
 import passport from '../backend/config/passport.js';
 import { setUpWebSocketServer } from '../backend/webSockets/websocket.js';
+import { validateAndConsumeTicket } from '../backend/controllers/wsTicket.controller.js';
 
 dotenv.config(); 
 
 const app = express(); 
 const server = createServer(app);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ noServer: True });
 const PORT = process.env.PORT; 
 
 // middleware: 
@@ -38,17 +40,45 @@ app.use(cors({
         "FETCH", 
         "DELETE", 
         "PATCH"
-    ], 
+    ],
     credentials: true
-})); 
+}));
 app.use(cookieParser(process.env.COOKIE_PW));
 app.use(passport.initialize());
 app.use('/', AuthRouter);
-app.use('/', emailRouter); 
-app.use('/', statsRouter); 
-app.use('/', practiceRouter); 
-app.use('/', resetPasswordRouter); 
-app.use('/', googleRouter); 
+app.use('/', emailRouter);
+app.use('/', statsRouter);
+app.use('/', practiceRouter);
+app.use('/', resetPasswordRouter);
+app.use('/', googleRouter);
+app.use('/', wsTicketRouter);
+
+
+server.on('upgrade', (request, socket, head) => {
+    try {
+        const url = new URL(request.url, `http://${request.headers.host}`);
+        const ticket = url.searchParams.get('ticket');
+
+        const user = validateAndConsumeTicket(ticket);
+
+        if (!user) {
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+        }
+
+        request._wsUser = user;
+
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            ws.userId = user.userId;
+            ws.username = user.username;
+            wss.emit('connection', ws, request);
+        });
+    } catch (error) {
+        socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+        socket.destroy();
+    }
+});
 
 setUpWebSocketServer(wss);
 

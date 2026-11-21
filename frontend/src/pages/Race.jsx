@@ -72,57 +72,100 @@ export default function Race() {
 		fetchUserData();
 	}, [accessToken, authUser, fetchWithAuth]);
 
-	// WebSocket connection
+
 	useEffect(() => {
-		const socket = new WebSocket("ws://localhost:3000");
-		console.log("connected to websocket server");
-		socketRef.current = socket;
+		const hasLoggedInUser = Boolean(authUser || accessToken);
+		if (!hasLoggedInUser) {
+			return;
+		}
 
-		socket.onopen = () => {
-			socket.send(JSON.stringify({ type: "room:list" }));
+		let socket = null;
+		let isCancelled = false;
+
+		const connectWebSocket = async () => {
+			try {
+				const response = await fetchWithAuth("http://localhost:3000/ws/ticket", {
+					method: "POST",
+				});
+
+				if (!response.ok) {
+					console.error("Failed to obtain WebSocket ticket");
+					return;
+				}
+
+				const data = await response.json();
+				if (isCancelled || !data?.ticket) return;
+
+				socket = new WebSocket(`ws://localhost:3000?ticket=${encodeURIComponent(data.ticket)}`);
+				socketRef.current = socket;
+
+				socket.onopen = () => {
+					console.log("connected to websocket server");
+					socket.send(JSON.stringify({ type: "room:list" }));
+				};
+
+				socket.onmessage = (event) => {
+					let message;
+					try {
+						message = JSON.parse(event.data);
+					} catch {
+						return;
+					}
+
+					if (message.type === "room:list") {
+						setRooms(message.payload);
+					}
+					if (message.type === "room:created") {
+						setRooms((currentRooms) => [...currentRooms, message.payload]);
+					}
+					if (message.type === "room:deleted") {
+						setRooms((currentRooms) =>
+							currentRooms.filter((room) => room.id !== message.payload),
+						);
+						setActiveRoom(null);
+					}
+					if (message.type === "room:joined") {
+						setActiveRoom(message.payload);
+					}
+					if (message.type === "room:join:error") {
+						toast.error(message.payload);
+					}
+					if (message.type === "room:left") {
+						setActiveRoom(null);
+					}
+					if (
+						message.type === "room:updated" ||
+						message.type === "room:progress_updated"
+					) {
+						setActiveRoom(message.payload);
+					}
+					if (message.type === "room:start") {
+						setActiveRoom(message.payload);
+						setGameStarted(true);
+					}
+					if (message.type === "error") {
+						toast.error(message.payload);
+					}
+				};
+
+				socket.onclose = () => {
+					console.log("websocket disconnected");
+				};
+			} catch (error) {
+				console.error("Error connecting to WebSocket:", error);
+			}
 		};
 
-		socket.onmessage = (event) => {
-			const message = JSON.parse(event.data);
-			if (message.type === "room:list") {
-				setRooms(message.payload);
-			}
-			if (message.type === "room:created") {
-				setRooms((currentRooms) => [...currentRooms, message.payload]);
-			}
-			if (message.type === "room:deleted") {
-				setRooms((currentRooms) =>
-					currentRooms.filter((room) => room.id !== message.payload),
-				);
-				setActiveRoom(null);
-			}
-			if (message.type === "room:joined") {
-				setActiveRoom(message.payload);
-			}
-			if (message.type === "room:join:error") {
-				toast.error(message.payload);
-			}
-			if (message.type === "room:left") {
-				setActiveRoom(null);
-			}
-			if (
-				message.type === "room:updated" ||
-				message.type === "room:progress_updated"
-			) {
-				setActiveRoom(message.payload);
-			}
-			if (message.type === "room:start") {
-				setActiveRoom(message.payload);
-				setGameStarted(true);
-				return;
-			}
-		};
+		connectWebSocket();
 
 		return () => {
-			socket.close();
+			isCancelled = true;
+			if (socket) {
+				socket.close();
+			}
 			socketRef.current = null;
 		};
-	}, []);
+	}, [accessToken, authUser, fetchWithAuth]);
 
 	const handleCreateRoom = (roomData) => {
 		if (!authUser && !accessToken) {
@@ -130,31 +173,18 @@ export default function Race() {
 			return;
 		}
 
-		const newRoom = {
-			id: generateRoomCode(),
-			name: roomData.name,
-			type: roomData.type,
-			status: "waiting",
-			playerCount: 1,
-			capacity: roomData.capacity,
-			password: roomData.password,
-			adminId: userData.id,
-			players: [
-				{
-					id: userData.id,
-					username: userData.username,
-				},
-			],
-		};
-
 		setShowCreateModal(false);
 		socketRef.current?.send(
 			JSON.stringify({
 				type: "room:create",
-				payload: newRoom,
+				payload: {
+					name: roomData.name,
+					type: roomData.type,
+					capacity: roomData.capacity,
+					password: roomData.password,
+				},
 			}),
 		);
-		setActiveRoom(newRoom);
 	};
 
 	const handleJoinPublicRoom = (room) => {
@@ -168,22 +198,10 @@ export default function Race() {
 			return;
 		}
 
-		const updatedRoom = {
-			...room,
-			playerCount: room.playerCount + 1,
-			players: [
-				...(room.players || []),
-				{
-					id: userData.id,
-					username: userData.username,
-				},
-			],
-		};
-
 		socketRef.current?.send(
 			JSON.stringify({
 				type: "room:join",
-				payload: { roomId: room.id, user: userData },
+				payload: { roomId: room.id },
 			}),
 		);
 	};
@@ -215,28 +233,17 @@ export default function Race() {
 			};
 		}
 
-		const updatedRoom = {
-			...room,
-			playerCount: room.playerCount + 1,
-			players: [
-				...(room.players || []),
-				{
-					id: userData.id,
-					username: userData.username,
-				},
-			],
-		};
-
 		socketRef.current?.send(
 			JSON.stringify({
 				type: "room:join",
 				payload: {
 					roomId: room.id,
-					user: userData,
 					password: roomPassword,
 				},
 			}),
 		);
+
+		return { success: true };
 	};
 
 	const handleLeaveRoom = () => {
@@ -246,7 +253,6 @@ export default function Race() {
 					type: "room:leave",
 					payload: {
 						roomId: activeRoom.id,
-						userData: userData,
 					},
 				}),
 			);
@@ -261,11 +267,9 @@ export default function Race() {
 				type: "room:delete",
 				payload: {
 					roomId: activeRoom.id,
-					userData: userData,
 				},
 			}),
 		);
-		setActiveRoom(null);
 	};
 
 	if (activeRoom) {

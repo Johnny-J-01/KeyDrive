@@ -12,7 +12,7 @@ import { jwtAuthMiddleware } from '../middlewares/jwtAuth.middleware.js';
 const router = express.Router(); 
 
 router.post('/userAuthRegister', userAuthRegisterController); 
-router.post('/userEditProfile', userAuthProfileController); 
+router.post('/userEditProfile', jwtAuthMiddleware, userAuthProfileController); 
 router.post('/userAuthLogin', userAuthLoginController); 
 router.post("/refresh", userAuthRefreshController);
 router.post('/userAuthLogout', userAuthLogoutController); 

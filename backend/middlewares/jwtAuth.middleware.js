@@ -18,6 +18,13 @@ export const jwtAuthMiddleware = (request, response, next) => {
 			process.env.JWT_SECRET
 		);
 
+		if (decoded.purpose !== "access") {
+			return response.status(401).json({
+				success: false,
+				message: "Invalid token type",
+			});
+		}
+
 		request.user = decoded;
 
 		next();

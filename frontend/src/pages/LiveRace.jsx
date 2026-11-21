@@ -49,11 +49,11 @@ export default function LiveRace({ room, userData, socketRef }) {
 		const currentWordIndex = completedWords.length;
 		const targetWord = words[currentWordIndex];
 
-		// If user typed space, check if word is correct
+
 		if (value.endsWith(" ")) {
 			const typedWord = value.slice(0, -1);
 			if (typedWord === targetWord) {
-				// Correct word!
+
 				const newCompleted = [...completedWords, typedWord];
 				setCompletedWords(newCompleted);
 				setCurrentWordInput("");
@@ -75,7 +75,6 @@ export default function LiveRace({ room, userData, socketRef }) {
 						type: "room:update_progress",
 						payload: {
 							roomId: room.id,
-							userId: currentUserId,
 							progress: progress,
 							wpm: wpm,
 							isFinished: finished,
@@ -84,11 +83,11 @@ export default function LiveRace({ room, userData, socketRef }) {
 					}),
 				);
 			} else {
-				// Incorrect word, just update input (force them to fix it or let them keep typing incorrectly)
+
 				setCurrentWordInput(value);
 			}
 		} else {
-			// Typing characters: can't delete into completed words, which is naturally handled by keeping completed wrds and currentWordInput separate.
+
 			setCurrentWordInput(value);
 		}
 	};
@@ -118,7 +117,7 @@ export default function LiveRace({ room, userData, socketRef }) {
 		}
 	};
 
-	// HUD Logic
+
 	const players = room?.players || [];
 	const me = players.find((p) => p.id === currentUserId) || {
 		progress: 0,
@@ -126,13 +125,13 @@ export default function LiveRace({ room, userData, socketRef }) {
 		rank: 1,
 	};
 
-	// Sort players to find top player
+
 	const sortedPlayers = [...players].sort(
 		(a, b) => (b.progress || 0) - (a.progress || 0),
 	);
 	const topPlayer = sortedPlayers[0];
 
-	// If I am top player, show second place player (if exists)
+
 	let opponentToShow = topPlayer;
 	if (topPlayer?.id === currentUserId && sortedPlayers.length > 1) {
 		opponentToShow = sortedPlayers[1];
@@ -227,7 +226,7 @@ export default function LiveRace({ room, userData, socketRef }) {
 							)}
 						</div>
 
-						{/* top right real time wpm component */}
+						{}
 						<div className="absolute top-4 right-10 z-10 bg-black/60 backdrop-blur-md p-4 rounded-xl border border-borderMain flex flex-col items-center justify-center w-24">
 							<span className="text-xs font-bold text-textMuted uppercase">
 								WPM
