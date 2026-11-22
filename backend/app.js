@@ -14,7 +14,7 @@ import resetPasswordRouter from '../backend/routes/ResetPasword.route.js';
 import googleRouter from '../backend/routes/OAuth.route.js';
 import wsTicketRouter from '../backend/routes/wsTicket.routes.js';
 import passport from '../backend/config/passport.js';
-import { setUpWebSocketServer } from '../backend/webSockets/websocket.js';
+import { setUpWebSocketServer } from '../backend/webSockets/webSocketServer.js';
 import { validateAndConsumeTicket } from '../backend/controllers/wsTicket.controller.js';
 
 dotenv.config(); 
