@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 import { handleRoomMessage } from "./roomManager.js";
-import { handleRaceMessage } from "./raceManager.js";
+import { handleRaceMessage, finalizeRaceResults } from "./raceManager.js";
 
 const rooms = [];
 
@@ -94,6 +94,7 @@ function removeSocketFromRoom(socket) {
 		} else {
 			if (room.status === "running" && room.players.every((p) => p.isFinished)) {
 				room.status = "waiting";
+				finalizeRaceResults(room);
 			}
 
 			const updated = sanitizeRoom(room);
@@ -162,6 +163,7 @@ export const setUpWebSocketServer = (wss) => {
 					sendTo,
 					addSocketToRoom,
 					generateRoomCode,
+					finalizeRaceResults,
 				});
 				return;
 			}

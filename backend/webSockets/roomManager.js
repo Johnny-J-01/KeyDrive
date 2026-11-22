@@ -13,6 +13,7 @@ export const handleRoomMessage = (
 		sendTo,
 		addSocketToRoom,
 		generateRoomCode,
+		finalizeRaceResults,
 	},
 ) => {
 	if (type === "room:create") {
@@ -268,6 +269,9 @@ export const handleRoomMessage = (
 			} else {
 				if (findRoomToLeave.status === "running" && findRoomToLeave.players.every((p) => p.isFinished)) {
 					findRoomToLeave.status = "waiting";
+					if (typeof finalizeRaceResults === "function") {
+						finalizeRaceResults(findRoomToLeave);
+					}
 				}
 
 				const updated = sanitizeRoom(findRoomToLeave);

@@ -1,4 +1,137 @@
 import { WebSocket } from "ws";
+import crypto from "crypto";
+import pool from "../model/db.js";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const finalizeRaceResults = async (room, { db = pool } = {}) => {
+	if (!room || room.isFinalized || room.isFinalizing) {
+		return;
+	}
+
+	if (!room.players || room.players.length === 0) {
+		return;
+	}
+
+	if (!room.players.every((p) => p.isFinished)) {
+		return;
+	}
+
+	if (!room.players.some((p) => p.isFinished && (p.progress || 0) >= 100)) {
+		return;
+	}
+
+	room.isFinalizing = true;
+	room.status = "waiting";
+
+	const sorted = [...room.players].sort((a, b) => {
+		if (a.isFinished && !b.isFinished) return -1;
+		if (!a.isFinished && b.isFinished) return 1;
+		if (a.isFinished && b.isFinished) {
+			if (a.finishedAt && b.finishedAt && a.finishedAt !== b.finishedAt) {
+				return a.finishedAt - b.finishedAt;
+			}
+			return (b.wpm || 0) - (a.wpm || 0);
+		}
+		if ((b.progress || 0) !== (a.progress || 0)) {
+			return (b.progress || 0) - (a.progress || 0);
+		}
+		return (b.wpm || 0) - (a.wpm || 0);
+	});
+
+	sorted.forEach((p, idx) => {
+		const target = room.players.find((pl) => pl.id === p.id);
+		if (target) {
+			target.rank = idx + 1;
+		}
+	});
+
+	const winner = sorted.find((p) => p.rank === 1 && p.isFinished && (p.progress || 0) >= 100);
+	const winnerId = winner ? winner.id : null;
+	if (winnerId) {
+		room.winnerId = winnerId;
+	}
+
+	const raceId = (typeof room.raceId === "string" && UUID_REGEX.test(room.raceId))
+		? room.raceId
+		: crypto.randomUUID();
+	const startTime = room.startTime ? new Date(room.startTime) : new Date();
+	const endTime = new Date();
+
+	let client;
+	try {
+		client = await db.connect();
+		await client.query("BEGIN");
+
+		const raceInsert = await client.query(
+			`INSERT INTO races (id, passage_id, status, start_time, end_time)
+			 VALUES ($1, $2, 'completed', $3, $4)
+			 ON CONFLICT (id) DO NOTHING
+			 RETURNING id;`,
+			[raceId, room.passageId || null, startTime, endTime],
+		);
+
+		if (raceInsert.rows.length === 0) {
+			await client.query("ROLLBACK");
+			room.isFinalized = true;
+			return;
+		}
+
+		for (const player of sorted) {
+			if (!player.id || typeof player.id !== "string" || !UUID_REGEX.test(player.id)) {
+				continue;
+			}
+
+			const userCheck = await client.query(
+				`SELECT id FROM users WHERE id = $1;`,
+				[player.id],
+			);
+			if (userCheck.rows.length === 0) {
+				continue;
+			}
+
+			const placement = player.rank;
+			const wpm = Math.round(player.wpm || 0);
+			const accuracy = Math.round(player.accuracy !== undefined ? player.accuracy : 100);
+			const completedAt = player.finishedAt ? new Date(player.finishedAt) : endTime;
+			const errors = player.errors || 0;
+
+			await client.query(
+				`INSERT INTO race_participants (race_id, user_id, wpm, accuracy, placement, errors, completed_at)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+				[raceId, player.id, wpm, accuracy, placement, errors, completedAt],
+			);
+
+			const isWinner = (player.id === winnerId && placement === 1 && player.isFinished);
+			const winIncrement = isWinner ? 1 : 0;
+
+			await client.query(
+				`INSERT INTO user_stats (user_id, total_races, races_won, updated_at)
+				 VALUES ($1, 1, $2, CURRENT_TIMESTAMP)
+				 ON CONFLICT (user_id) DO UPDATE
+				 SET total_races = user_stats.total_races + 1,
+				     races_won = user_stats.races_won + $2,
+				     updated_at = CURRENT_TIMESTAMP;`,
+				[player.id, winIncrement],
+			);
+		}
+
+		await client.query("COMMIT");
+		room.isFinalized = true;
+	} catch (err) {
+		if (client) {
+			try {
+				await client.query("ROLLBACK");
+			} catch {}
+		}
+		console.error("Failed to persist race results:", err);
+	} finally {
+		if (client) {
+			client.release();
+		}
+		room.isFinalizing = false;
+	}
+};
 
 export const handleRaceMessage = (
 	type,
@@ -51,6 +184,11 @@ export const handleRaceMessage = (
 		}
 
 		room.status = "running";
+		room.raceId = crypto.randomUUID();
+		room.startTime = Date.now();
+		room.isFinalized = false;
+		room.isFinalizing = false;
+		delete room.winnerId;
 		room.players.forEach((p) => {
 			delete p.progress;
 			delete p.wpm;
@@ -61,6 +199,9 @@ export const handleRaceMessage = (
 		});
 		if (payload.passage) {
 			room.passage = payload.passage;
+		}
+		if (payload.passageId) {
+			room.passageId = payload.passageId;
 		}
 
 		broadcastToRoom(room.id, {
@@ -202,6 +343,7 @@ export const handleRaceMessage = (
 
 		if (room.players.length > 0 && room.players.every((p) => p.isFinished)) {
 			room.status = "waiting";
+			finalizeRaceResults(room);
 			const finishedMessage = {
 				type: "room:updated",
 				payload: sanitizeRoom(room),

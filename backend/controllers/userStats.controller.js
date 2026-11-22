@@ -91,10 +91,25 @@ export const userStatsGetController = async (request, response) => {
         const avgWpm = result.rows[0]?.avg_wpm ?? 0;
         const avgAcc = result.rows[0]?.avg_accuracy ?? 0;
 
+        const statsResult = await pool.query(
+            `
+                SELECT races_won, total_races
+                FROM user_stats
+                WHERE user_id = $1;
+            `,
+            [userId]
+        );
+
+        const racesWon = statsResult.rows[0]?.races_won ?? 0;
+        const totalRaces = statsResult.rows[0]?.total_races ?? 0;
+
         const statData = {
             AVG_WPM: avgWpm,
             AVG_Acc: avgAcc,
             total_sessions: result.rows[0]?.total_sessions ?? 0,
+            racesWon: Number(racesWon),
+            races_won: Number(racesWon),
+            totalRaces: Number(totalRaces),
         };
 
         return response.status(200).json({

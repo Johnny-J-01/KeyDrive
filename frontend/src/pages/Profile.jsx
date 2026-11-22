@@ -100,7 +100,7 @@ export default function Profile() {
 				<StatCard
 					icon={Trophy}
 					label="Races Won"
-					value={!userStatData ? 100 : userStatData.racesWon}
+					value={!userStatData ? 0 : (userStatData.racesWon ?? 0)}
 				/>
 				<StatCard
 					icon={Flame}
