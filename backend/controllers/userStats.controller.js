@@ -194,15 +194,21 @@ export const allUserDataController = async (request, response) => {
                         users.username,
                         users.avatar_url,
                         practice_history.wpm AS max_wpm,
-                        practice_history.accuracy
+                        practice_history.accuracy,
+                        practice_history.started_at AS date,
+                        COALESCE(user_stats.races_won, 0) AS "racesWon",
+                        COALESCE(user_stats.races_won, 0) AS races_won
                     FROM users
                     JOIN practice_history
                         ON users.id = practice_history.user_id
+                    LEFT JOIN user_stats
+                        ON users.id = user_stats.user_id
                     WHERE 1 = 1
                     ${dateCondition}
                     ORDER BY
                         users.id,
-                        practice_history.wpm DESC
+                        practice_history.wpm DESC,
+                        practice_history.started_at DESC
                 ) AS leaderboard
                 ORDER BY max_wpm DESC;
             `
