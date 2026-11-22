@@ -9,12 +9,14 @@ export default function LiveRace({ room, userData, socketRef }) {
 
 	const passage =
 		room.passage || "the secret of getting ahead is getting started";
-	const words = passage.split(" ");
+	const words = passage.trim().split(/\s+/);
 	const [completedWords, setCompletedWords] = useState([]);
 	const [currentWordInput, setCurrentWordInput] = useState("");
 	const [startTime, setStartTime] = useState(null);
 	const [isFinished, setIsFinished] = useState(false);
 	const inputRef = useRef(null);
+	const lastProgressRef = useRef(0);
+	const totalKeystrokesRef = useRef(0);
 
 	const currentUserId = userData?.id;
 
@@ -48,27 +50,80 @@ export default function LiveRace({ room, userData, socketRef }) {
 		const value = event.target.value;
 		const currentWordIndex = completedWords.length;
 		const targetWord = words[currentWordIndex];
+		if (!targetWord) return;
 
+		const isLastWord = currentWordIndex === words.length - 1;
+
+		if (isLastWord && value === targetWord) {
+			const newCompleted = [...completedWords, targetWord];
+			setCompletedWords(newCompleted);
+			setCurrentWordInput("");
+			setIsFinished(true);
+
+			lastProgressRef.current = 100;
+			totalKeystrokesRef.current += 1;
+
+			const elapsedMinutes = Math.max(0.001, (Date.now() - startTime) / 60000);
+			const totalChars = passage.length;
+			const wpm = Math.round((totalChars / 5) / elapsedMinutes);
+			const accuracy = Math.min(100, Math.max(0, Math.round((totalChars / totalKeystrokesRef.current) * 100)));
+
+			socketRef.current?.send(
+				JSON.stringify({
+					type: "room:update_progress",
+					payload: {
+						roomId: room.id,
+						progress: 100,
+						wpm: wpm,
+						accuracy: accuracy,
+						isFinished: true,
+					},
+				}),
+			);
+			return;
+		}
 
 		if (value.endsWith(" ")) {
 			const typedWord = value.slice(0, -1);
 			if (typedWord === targetWord) {
-
 				const newCompleted = [...completedWords, typedWord];
 				setCompletedWords(newCompleted);
 				setCurrentWordInput("");
 
-				const progress = (newCompleted.length / words.length) * 100;
-				const elapsedMinutes = (Date.now() - startTime) / 60000;
+				if (newCompleted.length === words.length) {
+					setIsFinished(true);
+					lastProgressRef.current = 100;
+					totalKeystrokesRef.current += 1;
 
-				let charsTyped = 0;
-				newCompleted.forEach((w) => (charsTyped += w.length + 1));
-				const wpm = Math.round(
-					charsTyped / 5 / (elapsedMinutes || 1 / 60),
-				);
-				const finished = newCompleted.length === words.length;
-				if (finished) setIsFinished(true);
-				const currentRank = calculateMyRank(progress);
+					const elapsedMinutes = Math.max(0.001, (Date.now() - startTime) / 60000);
+					const totalChars = passage.length;
+					const wpm = Math.round((totalChars / 5) / elapsedMinutes);
+					const accuracy = Math.min(100, Math.max(0, Math.round((totalChars / totalKeystrokesRef.current) * 100)));
+
+					socketRef.current?.send(
+						JSON.stringify({
+							type: "room:update_progress",
+							payload: {
+								roomId: room.id,
+								progress: 100,
+								wpm: wpm,
+								accuracy: accuracy,
+								isFinished: true,
+							},
+						}),
+					);
+					return;
+				}
+
+				let completedChars = 0;
+				newCompleted.forEach((w) => (completedChars += w.length + 1));
+				const progress = Math.min(99, Math.max(lastProgressRef.current, Math.round((completedChars / passage.length) * 100)));
+				lastProgressRef.current = progress;
+
+				totalKeystrokesRef.current += 1;
+				const elapsedMinutes = Math.max(0.001, (Date.now() - startTime) / 60000);
+				const wpm = Math.round((completedChars / 5) / elapsedMinutes);
+				const accuracy = Math.min(100, Math.max(0, Math.round((completedChars / totalKeystrokesRef.current) * 100)));
 
 				socketRef.current?.send(
 					JSON.stringify({
@@ -77,28 +132,64 @@ export default function LiveRace({ room, userData, socketRef }) {
 							roomId: room.id,
 							progress: progress,
 							wpm: wpm,
-							isFinished: finished,
-							rank: currentRank,
+							accuracy: accuracy,
+							isFinished: false,
 						},
 					}),
 				);
 			} else {
-
 				setCurrentWordInput(value);
+				totalKeystrokesRef.current += 1;
 			}
 		} else {
-
 			setCurrentWordInput(value);
+			totalKeystrokesRef.current += 1;
+
+			let matchingChars = 0;
+			for (let i = 0; i < value.length && i < targetWord.length; i++) {
+				if (value[i] === targetWord[i]) {
+					matchingChars++;
+				} else {
+					break;
+				}
+			}
+
+			let completedChars = 0;
+			completedWords.forEach((w) => (completedChars += w.length + 1));
+			const currentTotalCorrect = completedChars + matchingChars;
+			const progress = Math.min(99, Math.max(lastProgressRef.current, Math.round((currentTotalCorrect / passage.length) * 100)));
+
+			if (progress > lastProgressRef.current) {
+				lastProgressRef.current = progress;
+				const elapsedMinutes = Math.max(0.001, (Date.now() - startTime) / 60000);
+				const wpm = Math.round((currentTotalCorrect / 5) / elapsedMinutes);
+				const accuracy = Math.min(100, Math.max(0, Math.round((currentTotalCorrect / totalKeystrokesRef.current) * 100)));
+
+				socketRef.current?.send(
+					JSON.stringify({
+						type: "room:update_progress",
+						payload: {
+							roomId: room.id,
+							progress: progress,
+							wpm: wpm,
+							accuracy: accuracy,
+							isFinished: false,
+						},
+					}),
+				);
+			}
 		}
 	};
 
 	const calculateMyRank = (myProgress) => {
-		const others = room.players
-			.filter((p) => p.id !== currentUserId)
-			.map((p) => p.progress || 0);
+		const others = (room?.players || []).filter((p) => p.id !== currentUserId);
 		let rank = 1;
 		others.forEach((p) => {
-			if (p > myProgress) rank++;
+			if (p.isFinished && !me.isFinished) {
+				rank++;
+			} else if ((p.progress || 0) > myProgress) {
+				rank++;
+			}
 		});
 		return rank;
 	};
@@ -116,7 +207,6 @@ export default function LiveRace({ room, userData, socketRef }) {
 		}
 	};
 
-
 	const players = room?.players || [];
 	const me = players.find((p) => p.id === currentUserId) || {
 		progress: 0,
@@ -124,19 +214,14 @@ export default function LiveRace({ room, userData, socketRef }) {
 		rank: 1,
 	};
 
-
-	const sortedPlayers = [...players].sort(
-		(a, b) => (b.progress || 0) - (a.progress || 0),
-	);
-	const topPlayer = sortedPlayers[0];
-
-
-	let opponentToShow = topPlayer;
-	if (topPlayer?.id === currentUserId && sortedPlayers.length > 1) {
-		opponentToShow = sortedPlayers[1];
-	} else if (topPlayer?.id === currentUserId) {
-		opponentToShow = null;
-	}
+	const sortedPlayers = [...players].sort((a, b) => {
+		if (a.rank && b.rank && a.rank !== b.rank) {
+			return a.rank - b.rank;
+		}
+		if (a.isFinished && !b.isFinished) return -1;
+		if (!a.isFinished && b.isFinished) return 1;
+		return (b.progress || 0) - (a.progress || 0);
+	});
 
 	return (
 		<div
@@ -174,65 +259,55 @@ export default function LiveRace({ room, userData, socketRef }) {
 			{isStarted && (
 				<>
 					<div className="w-full relative px-6 z-0">
-						<div className="absolute top-4 left-10 z-10 bg-black/60 backdrop-blur-md p-4 rounded-xl border border-borderMain w-64 flex flex-col gap-3">
-							<div>
-								<div className="flex justify-between text-xs text-textMuted mb-1 font-bold">
-									<span>
-										My Progress (Rank{" "}
-										{me.rank ||
-											calculateMyRank(me.progress || 0)}
-										)
-									</span>
-									<span>{Math.round(me.progress || 0)}%</span>
-								</div>
-								<div className="w-full bg-surface h-2 rounded-full overflow-hidden">
-									<div
-										className="bg-primary h-full transition-all duration-300"
-										style={{
-											width: `${me.progress || 0}%`,
-										}}
-									/>
-								</div>
+						<div className="absolute top-4 left-10 z-10 bg-black/60 backdrop-blur-md p-4 rounded-xl border border-borderMain w-72 flex flex-col gap-3 max-h-72 overflow-y-auto">
+							<div className="text-xs font-bold text-textMuted uppercase tracking-wider">
+								Leaderboard
 							</div>
-
-							{opponentToShow && (
-								<div>
-									<div className="flex justify-between text-xs text-textMuted mb-1">
-										<span>
-											{opponentToShow.username} (Rank{" "}
-											{sortedPlayers.findIndex(
-												(p) =>
-													p.id === opponentToShow.id,
-											) + 1}
-											)
-										</span>
-										<span>
-											{Math.round(
-												opponentToShow.progress || 0,
-											)}
-											%
-										</span>
+							{sortedPlayers.map((player) => {
+								const isCurrent = player.id === currentUserId;
+								const playerProgress = Math.min(100, Math.round(player.progress || 0));
+								return (
+									<div key={player.id} className="flex flex-col gap-1">
+										<div className="flex justify-between text-xs text-textMuted mb-1 font-bold">
+											<span className={clsx(isCurrent ? "text-primary" : "text-white")}>
+												#{player.rank || 1} {player.username} {isCurrent && "(You)"}
+												{player.isFinished && " • Done"}
+											</span>
+											<span>{playerProgress}%</span>
+										</div>
+										<div className="w-full bg-surface h-2 rounded-full overflow-hidden">
+											<div
+												className={clsx(
+													"h-full transition-all duration-300",
+													isCurrent ? "bg-primary" : "bg-red-500",
+												)}
+												style={{
+													width: `${playerProgress}%`,
+												}}
+											/>
+										</div>
 									</div>
-									<div className="w-full bg-surface h-2 rounded-full overflow-hidden">
-										<div
-											className="bg-red-500 h-full transition-all duration-300"
-											style={{
-												width: `\${opponentToShow.progress || 0}%`,
-											}}
-										/>
-									</div>
-								</div>
-							)}
+								);
+							})}
 						</div>
 
-						{}
-						<div className="absolute top-4 right-10 z-10 bg-black/60 backdrop-blur-md p-4 rounded-xl border border-borderMain flex flex-col items-center justify-center w-24">
-							<span className="text-xs font-bold text-textMuted uppercase">
-								WPM
-							</span>
-							<span className="text-3xl font-bold font-mono text-white">
-								{me.wpm || 0}
-							</span>
+						<div className="absolute top-4 right-10 z-10 bg-black/60 backdrop-blur-md p-4 rounded-xl border border-borderMain flex items-center justify-center gap-6 px-6 py-3">
+							<div className="flex flex-col items-center">
+								<span className="text-xs font-bold text-textMuted uppercase">
+									WPM
+								</span>
+								<span className="text-3xl font-bold font-mono text-white">
+									{me.wpm || 0}
+								</span>
+							</div>
+							<div className="flex flex-col items-center border-l border-borderMain pl-6">
+								<span className="text-xs font-bold text-textMuted uppercase">
+									Accuracy
+								</span>
+								<span className="text-3xl font-bold font-mono text-white">
+									{me.accuracy !== undefined ? `${me.accuracy}%` : "100%"}
+								</span>
+							</div>
 						</div>
 
 						<RaceGame3D
