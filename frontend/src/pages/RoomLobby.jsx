@@ -1,7 +1,7 @@
 import { Users, Copy, LogOut, Play, Lock, Globe, Check } from "lucide-react";
 import { useState } from "react";
 import LiveRace from "./LiveRace";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 
 export default function RoomLobby({
 	socketRef,
@@ -33,13 +33,10 @@ export default function RoomLobby({
 
 	const handleStartRace = async () => {
 		try {
-			const response = await fetch(
-				`${API_URL}/practice/words`,
-				{
-					method: "GET",
-					credentials: "include",
-				},
-			);
+			const response = await fetch(`${API_URL}/practice/words`, {
+				method: "GET",
+				credentials: "include",
+			});
 			let passage =
 				"the secret of getting ahead is getting started and typing fast";
 			if (response.ok) {

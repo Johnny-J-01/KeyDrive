@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Keyboard } from "lucide-react";
 import { toast, Toaster } from "sonner";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 
 export default function Register() {
 	const [userFormData, setUserFormData] = React.useState({
@@ -115,8 +115,7 @@ export default function Register() {
 				<button
 					type="button"
 					onClick={() => {
-						window.location.href =
-							`${API_URL}/auth/google`;
+						window.location.href = `${API_URL}/auth/google`;
 					}}
 					className="mt-6 w-full py-2.5 bg-background border border-borderMain text-white font-medium rounded-lg hover:bg-white/[0.02] transition-colors flex items-center justify-center gap-2"
 				>

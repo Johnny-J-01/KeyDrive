@@ -3,7 +3,7 @@ import { Keyboard, Trophy, User, Activity } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "../main";
 import { toast } from "sonner";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 
 const navLinks = [
 	{ path: "/practice", label: "Practice", icon: Keyboard },

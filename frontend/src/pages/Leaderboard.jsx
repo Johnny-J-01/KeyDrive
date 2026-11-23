@@ -3,7 +3,7 @@ import { Trophy, Search, Medal } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { useAuth } from "../main";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 
 const FILTERS = ["Daily", "Weekly", "Monthly", "All Time"];
 
@@ -185,7 +185,11 @@ export default function Leaderboard() {
 									<td className="px-6 py-4">
 										<div className="flex items-center gap-3">
 											<img
-												src={user.avatar || user.avatar_url || "👲"}
+												src={
+													user.avatar ||
+													user.avatar_url ||
+													"👲"
+												}
 												alt=""
 												className="w-8 h-8 rounded-full bg-borderMain"
 											/>

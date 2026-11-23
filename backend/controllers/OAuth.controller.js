@@ -1,4 +1,4 @@
-import { generateAccessToken } from "../utils/JWTtoken.utils.js";
+import { generateAccessToken } from "../utils/jwttoken.utils.js";
 import { generateRefreshToken, hashRefreshToken } from "../utils/refreshTokens.utils.js";
 import supabase from "../model/supabase.js";
 
@@ -43,7 +43,7 @@ export const googleLoginController = async (request, response) => {
 		);
 	} catch (error) {
 		console.error("Google OAuth error:", error);
-		return response.redirect(`${process.env.FRONTEND_URL}/login?oauth=failed`);
+		return response.redirect(`${process.env.CLIENT_URL}/login?oauth=failed`);
 		// return response.redirect("http://localhost:5173/login?oauth=failed");
 	}
 };

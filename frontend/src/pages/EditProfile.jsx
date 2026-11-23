@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../main";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 
 function EditProfile() {
 	const [userData, setUserData] = useState(null);
@@ -26,12 +26,9 @@ function EditProfile() {
 	useEffect(() => {
 		const fetchUserPeronsalData = async () => {
 			try {
-				const response = await fetchWithAuth(
-					`${API_URL}/profile`,
-					{
-						method: "GET",
-					},
-				);
+				const response = await fetchWithAuth(`${API_URL}/profile`, {
+					method: "GET",
+				});
 
 				if (!response.ok) {
 					toast.error("Failed to Fetch User Data");
@@ -63,16 +60,13 @@ function EditProfile() {
 	const handleSaveChanges = async (event) => {
 		event.preventDefault();
 
-		const response = await fetchWithAuth(
-			`${API_URL}/userEditProfile`,
-			{
-				method: "POST",
-				headers: {
-					"content-type": "application/json",
-				},
-				body: JSON.stringify(newUserData),
+		const response = await fetchWithAuth(`${API_URL}/userEditProfile`, {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
 			},
-		);
+			body: JSON.stringify(newUserData),
+		});
 
 		if (!response.ok) {
 			toast.error("Failed to Save!");
@@ -98,12 +92,9 @@ function EditProfile() {
 	};
 
 	const handleDeleteAccount = async () => {
-		const response = await fetchWithAuth(
-			`${API_URL}/userAuthDelete`,
-			{
-				method: "DELETE",
-			},
-		);
+		const response = await fetchWithAuth(`${API_URL}/userAuthDelete`, {
+			method: "DELETE",
+		});
 
 		if (!response.ok) {
 			toast.error("Failed to Delete the account");

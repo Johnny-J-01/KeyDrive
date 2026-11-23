@@ -10,7 +10,7 @@ import {
     generateRefreshToken,
     hashRefreshToken
 } from "../utils/refreshTokens.utils.js";
-import { generateVerificationToken, generateAccessToken } from '../utils/JWTtoken.utils.js';
+import { generateVerificationToken, generateAccessToken } from '../utils/jwttoken.utils.js';
 import { verifyTemplate } from '../templates/verify.template.js';
 import { sendEmail } from '../services/mail.services.js';
 

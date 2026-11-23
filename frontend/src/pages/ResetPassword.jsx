@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { KeyRound, Lock } from "lucide-react";
 import { toast } from "sonner";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 
 function ResetPassword() {
 	const passwordRef = useRef(null);
@@ -26,17 +26,14 @@ function ResetPassword() {
 		}
 
 		try {
-			const response = await fetch(
-				`${API_URL}/resetPassword`,
-				{
-					method: "PATCH",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({ token, password }),
-					credentials: "include",
+			const response = await fetch(`${API_URL}/resetPassword`, {
+				method: "PATCH",
+				headers: {
+					"Content-Type": "application/json",
 				},
-			);
+				body: JSON.stringify({ token, password }),
+				credentials: "include",
+			});
 
 			const data = await response.json();
 			if (!response.ok) {

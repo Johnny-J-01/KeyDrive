@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, KeyRound, Mail } from "lucide-react";
 import { toast } from "sonner";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 
 function ForgotPassword() {
 	const emailRef = useRef(null);

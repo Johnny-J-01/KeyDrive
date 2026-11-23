@@ -3,7 +3,7 @@ import { Keyboard } from "lucide-react";
 import React from "react";
 import { toast } from "sonner";
 import { useAuth } from "../main";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 
 const decodeJwtPayload = (token) => {
 	try {
@@ -91,15 +91,12 @@ export default function Login() {
 	const handleLoginFormSubmit = async (event) => {
 		event.preventDefault();
 		try {
-			const response = await fetch(
-				`${API_URL}/userAuthLogin`,
-				{
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify(userFormData),
-					credentials: "include",
-				},
-			);
+			const response = await fetch(`${API_URL}/userAuthLogin`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify(userFormData),
+				credentials: "include",
+			});
 
 			const data = await response.json();
 
@@ -192,8 +189,7 @@ export default function Login() {
 				<button
 					type="button"
 					onClick={() => {
-						window.location.href =
-							`${API_URL}/auth/google`;
+						window.location.href = `${API_URL}/auth/google`;
 					}}
 					className="mt-6 w-full py-2.5 bg-background border border-borderMain text-white font-medium rounded-lg hover:bg-white/[0.02] transition-colors flex items-center justify-center gap-2"
 				>

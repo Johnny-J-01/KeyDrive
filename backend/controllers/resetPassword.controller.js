@@ -1,4 +1,4 @@
-import { generateResetToken } from "../utils/JWTtoken.utils.js";
+import { generateResetToken } from "../utils/jwttoken.utils.js";
 import { sendEmail } from '../services/mail.services.js';
 import { resetPasswordTemplate } from '../templates/resetPassword.template.js';
 import jwt from 'jsonwebtoken';

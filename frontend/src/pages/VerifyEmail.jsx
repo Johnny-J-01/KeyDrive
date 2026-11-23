@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 
 const VerifyEmail = () => {
 	const [status, setStatus] = useState("loading");

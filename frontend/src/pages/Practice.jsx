@@ -5,7 +5,7 @@ import { mockPassages } from "../data/mock";
 import { toast } from "sonner";
 import PassageViewport from "../components/PassageViewport";
 import { useAuth } from "../main";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 
 const TIME_MODES = [15, 30, 60, 120];
 const WORD_MODES = [10, 25, 50, 100];
@@ -133,12 +133,9 @@ export default function Practice() {
 		}
 
 		const fetchUserData = async () => {
-			const response = await fetchWithAuth(
-				`${API_URL}/profile`,
-				{
-					method: "GET",
-				},
-			);
+			const response = await fetchWithAuth(`${API_URL}/profile`, {
+				method: "GET",
+			});
 
 			if (!response.ok) {
 				setUserPersonalData(null);
@@ -191,16 +188,13 @@ export default function Practice() {
 
 	const postUserData = useCallback(
 		async (userData) => {
-			const response = await fetchWithAuth(
-				`${API_URL}/stats`,
-				{
-					method: "POST",
-					headers: {
-						"content-type": "application/json",
-					},
-					body: JSON.stringify(userData),
+			const response = await fetchWithAuth(`${API_URL}/stats`, {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
 				},
-			);
+				body: JSON.stringify(userData),
+			});
 
 			if (!response.ok) {
 				const errorData = await response.json();

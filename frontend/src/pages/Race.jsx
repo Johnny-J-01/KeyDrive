@@ -8,7 +8,7 @@ import {
 	KeyRound,
 	ChevronRight,
 } from "lucide-react";
-import API_URL from "../config/api";
+import API_URL from "../config/api.js";
 import RoomLobby from "../pages/RoomLobby";
 import { toast } from "sonner";
 import LiveRace from "./LiveRace";
