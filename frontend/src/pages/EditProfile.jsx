@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../main";
+import API_URL from "../config/api";
 
 function EditProfile() {
 	const [userData, setUserData] = useState(null);
@@ -26,7 +27,7 @@ function EditProfile() {
 		const fetchUserPeronsalData = async () => {
 			try {
 				const response = await fetchWithAuth(
-					"http://localhost:3000/profile",
+					`${API_URL}/profile`,
 					{
 						method: "GET",
 					},
@@ -63,7 +64,7 @@ function EditProfile() {
 		event.preventDefault();
 
 		const response = await fetchWithAuth(
-			"http://localhost:3000/userEditProfile",
+			`${API_URL}/userEditProfile`,
 			{
 				method: "POST",
 				headers: {
@@ -83,7 +84,7 @@ function EditProfile() {
 	};
 
 	const handleLogout = async () => {
-		const response = await fetch("http://localhost:3000/userAuthLogout", {
+		const response = await fetch(`${API_URL}/userAuthLogout`, {
 			method: "POST",
 			credentials: "include",
 		});
@@ -98,7 +99,7 @@ function EditProfile() {
 
 	const handleDeleteAccount = async () => {
 		const response = await fetchWithAuth(
-			"http://localhost:3000/userAuthDelete",
+			`${API_URL}/userAuthDelete`,
 			{
 				method: "DELETE",
 			},

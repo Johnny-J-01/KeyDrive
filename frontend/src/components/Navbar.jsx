@@ -3,6 +3,7 @@ import { Keyboard, Trophy, User, Activity } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "../main";
 import { toast } from "sonner";
+import API_URL from "../config/api";
 
 const navLinks = [
 	{ path: "/practice", label: "Practice", icon: Keyboard },
@@ -16,7 +17,7 @@ export default function Navbar() {
 	const { user, logout } = useAuth();
 
 	async function handleLogout() {
-		const response = await fetch("http://localhost:3000/userAuthLogout", {
+		const response = await fetch(`${API_URL}/userAuthLogout`, {
 			method: "POST",
 			credentials: "include",
 		});

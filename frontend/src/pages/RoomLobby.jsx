@@ -1,6 +1,7 @@
 import { Users, Copy, LogOut, Play, Lock, Globe, Check } from "lucide-react";
 import { useState } from "react";
 import LiveRace from "./LiveRace";
+import API_URL from "../config/api";
 
 export default function RoomLobby({
 	socketRef,
@@ -33,7 +34,7 @@ export default function RoomLobby({
 	const handleStartRace = async () => {
 		try {
 			const response = await fetch(
-				"http://localhost:3000/practice/words",
+				`${API_URL}/practice/words`,
 				{
 					method: "GET",
 					credentials: "include",

@@ -33,16 +33,17 @@ export const googleLoginController = async (request, response) => {
 		response.cookie("refreshToken", refreshToken, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
-			sameSite: "strict",
+			sameSite: "none",
 			maxAge: 30 * 24 * 60 * 60 * 1000,
 			path: "/",
 		});
 
 		return response.redirect(
-			`http://localhost:5173/login?oauth=success&token=${encodeURIComponent(accessToken)}`,
+			`${process.env.CLIENT_URL}/login?oauth=success&token=${encodeURIComponent(accessToken)}`
 		);
 	} catch (error) {
 		console.error("Google OAuth error:", error);
-		return response.redirect("http://localhost:5173/login?oauth=failed");
+		return response.redirect(`${process.env.FRONTEND_URL}/login?oauth=failed`);
+		// return response.redirect("http://localhost:5173/login?oauth=failed");
 	}
 };

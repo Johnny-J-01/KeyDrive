@@ -34,7 +34,7 @@ app.use(express.json());
 app.use(express.urlencoded({extended: false})); 
 // app.use(express.static('/KEYDRIVE/backend/public')); 
 app.use(cors({
-    origin: "http://localhost:5173", 
+    origin: process.env.CLIENT_URL,  
     allowedHeaders: [
         'Content-Type',
         'Authorization'

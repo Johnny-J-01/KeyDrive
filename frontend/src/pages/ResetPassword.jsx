@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { KeyRound, Lock } from "lucide-react";
 import { toast } from "sonner";
+import API_URL from "../config/api";
 
 function ResetPassword() {
 	const passwordRef = useRef(null);
@@ -26,7 +27,7 @@ function ResetPassword() {
 
 		try {
 			const response = await fetch(
-				"http://localhost:3000/resetPassword",
+				`${API_URL}/resetPassword`,
 				{
 					method: "PATCH",
 					headers: {

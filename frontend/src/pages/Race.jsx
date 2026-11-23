@@ -8,6 +8,7 @@ import {
 	KeyRound,
 	ChevronRight,
 } from "lucide-react";
+import API_URL from "../config/api";
 import RoomLobby from "../pages/RoomLobby";
 import { toast } from "sonner";
 import LiveRace from "./LiveRace";
@@ -40,12 +41,9 @@ export default function Race() {
 					return;
 				}
 
-				const response = await fetchWithAuth(
-					"http://localhost:3000/profile",
-					{
-						method: "GET",
-					},
-				);
+				const response = await fetchWithAuth(`${API_URL}/profile`, {
+					method: "GET",
+				});
 				if (!response.ok) {
 					setUserData({
 						id: `${crypto.randomUUID()}`,
@@ -72,7 +70,6 @@ export default function Race() {
 		fetchUserData();
 	}, [accessToken, authUser, fetchWithAuth]);
 
-
 	useEffect(() => {
 		const hasLoggedInUser = Boolean(authUser || accessToken);
 		if (!hasLoggedInUser) {
@@ -84,7 +81,7 @@ export default function Race() {
 
 		const connectWebSocket = async () => {
 			try {
-				const response = await fetchWithAuth("http://localhost:3000/ws/ticket", {
+				const response = await fetchWithAuth(`${API_URL}/ws/ticket`, {
 					method: "POST",
 				});
 
@@ -95,8 +92,10 @@ export default function Race() {
 
 				const data = await response.json();
 				if (isCancelled || !data?.ticket) return;
-
-				socket = new WebSocket(`ws://localhost:3000?ticket=${encodeURIComponent(data.ticket)}`);
+				const WS_URL = API_URL.replace(/^http/, "ws");
+				socket = new WebSocket(
+					`${WS_URL}?ticket=${encodeURIComponent(data.ticket)}`,
+				);
 				socketRef.current = socket;
 
 				socket.onopen = () => {
@@ -117,14 +116,18 @@ export default function Race() {
 					}
 					if (message.type === "room:created") {
 						setRooms((currentRooms) =>
-							currentRooms.some((r) => r.id === message.payload.id)
+							currentRooms.some(
+								(r) => r.id === message.payload.id,
+							)
 								? currentRooms
 								: [...currentRooms, message.payload],
 						);
 					}
 					if (message.type === "room:deleted") {
 						setRooms((currentRooms) =>
-							currentRooms.filter((room) => room.id !== message.payload),
+							currentRooms.filter(
+								(room) => room.id !== message.payload,
+							),
 						);
 						setActiveRoom((currentActiveRoom) => {
 							if (currentActiveRoom?.id === message.payload) {
@@ -151,7 +154,9 @@ export default function Race() {
 					) {
 						setRooms((currentRooms) =>
 							currentRooms.map((room) =>
-								room.id === message.payload.id ? message.payload : room,
+								room.id === message.payload.id
+									? message.payload
+									: room,
 							),
 						);
 						setActiveRoom((currentActiveRoom) => {

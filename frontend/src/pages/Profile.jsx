@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../main";
+import API_URL from "../config/api";
 import clsx from "clsx";
 import {
 	LineChart,
@@ -48,7 +49,7 @@ export default function Profile() {
 
 		const fetchData = async () => {
 			const response = await fetchWithAuth(
-				"http://localhost:3000/profile",
+				`${API_URL}/profile`,
 				{
 					method: "GET",
 				},
@@ -66,7 +67,7 @@ export default function Profile() {
 
 		const fetchUserStatData = async () => {
 			const response = await fetchWithAuth(
-				"http://localhost:3000/stats",
+				`${API_URL}/stats`,
 				{
 					method: "GET",
 				},
@@ -86,7 +87,7 @@ export default function Profile() {
 			setHistoryError(null);
 			try {
 				const response = await fetchWithAuth(
-					"http://localhost:3000/stats/history",
+					`${API_URL}/stats/history`,
 					{
 						method: "GET",
 					},
