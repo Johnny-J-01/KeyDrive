@@ -1,10 +1,10 @@
 import { WebSocket } from "ws";
 import crypto from "crypto";
-import pool from "../model/db.js";
+import supabase from "../model/supabase.js";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const finalizeRaceResults = async (room, { db = pool } = {}) => {
+export const finalizeRaceResults = async (room, { db = supabase } = {}) => {
 	if (!room || room.isFinalized || room.isFinalizing) {
 		return;
 	}
@@ -55,80 +55,57 @@ export const finalizeRaceResults = async (room, { db = pool } = {}) => {
 	const raceId = (typeof room.raceId === "string" && UUID_REGEX.test(room.raceId))
 		? room.raceId
 		: crypto.randomUUID();
-	const startTime = room.startTime ? new Date(room.startTime) : new Date();
+	const startTime = room.startTime ? new Date(room.startTime).toISOString() : new Date().toISOString();
 	const endTime = new Date();
 
-	let client;
 	try {
-		client = await db.connect();
-		await client.query("BEGIN");
-
-		const raceInsert = await client.query(
-			`INSERT INTO races (id, passage_id, status, start_time, end_time)
-			 VALUES ($1, $2, 'completed', $3, $4)
-			 ON CONFLICT (id) DO NOTHING
-			 RETURNING id;`,
-			[raceId, room.passageId || null, startTime, endTime],
-		);
-
-		if (raceInsert.rows.length === 0) {
-			await client.query("ROLLBACK");
-			room.isFinalized = true;
-			return;
-		}
-
+		const participants = [];
 		for (const player of sorted) {
 			if (!player.id || typeof player.id !== "string" || !UUID_REGEX.test(player.id)) {
-				continue;
-			}
-
-			const userCheck = await client.query(
-				`SELECT id FROM users WHERE id = $1;`,
-				[player.id],
-			);
-			if (userCheck.rows.length === 0) {
 				continue;
 			}
 
 			const placement = player.rank;
 			const wpm = Math.round(player.wpm || 0);
 			const accuracy = Math.round(player.accuracy !== undefined ? player.accuracy : 100);
-			const completedAt = player.finishedAt ? new Date(player.finishedAt) : endTime;
+			const completedAt = player.finishedAt ? new Date(player.finishedAt).toISOString() : endTime.toISOString();
 			const errors = player.errors || 0;
-
-			await client.query(
-				`INSERT INTO race_participants (race_id, user_id, wpm, accuracy, placement, errors, completed_at)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-				[raceId, player.id, wpm, accuracy, placement, errors, completedAt],
-			);
 
 			const isWinner = (player.id === winnerId && placement === 1 && player.isFinished);
 			const winIncrement = isWinner ? 1 : 0;
 
-			await client.query(
-				`INSERT INTO user_stats (user_id, total_races, races_won, updated_at)
-				 VALUES ($1, 1, $2, CURRENT_TIMESTAMP)
-				 ON CONFLICT (user_id) DO UPDATE
-				 SET total_races = user_stats.total_races + 1,
-				     races_won = user_stats.races_won + $2,
-				     updated_at = CURRENT_TIMESTAMP;`,
-				[player.id, winIncrement],
-			);
+			participants.push({
+				user_id: player.id,
+				wpm,
+				accuracy,
+				placement,
+				errors,
+				completed_at: completedAt,
+				win_increment: winIncrement,
+			});
 		}
 
-		await client.query("COMMIT");
+		const { data, error } = await db.rpc("persist_race_results", {
+			p_race_id: raceId,
+			p_passage_id: room.passageId || null,
+			p_start_time: startTime,
+			p_end_time: endTime.toISOString(),
+			p_participants: participants,
+		});
+
+		if (error) {
+			throw error;
+		}
+
+		if (data?.success === false && data?.reason === "already_finalized") {
+			room.isFinalized = true;
+			return;
+		}
+
 		room.isFinalized = true;
 	} catch (err) {
-		if (client) {
-			try {
-				await client.query("ROLLBACK");
-			} catch {}
-		}
 		console.error("Failed to persist race results:", err);
 	} finally {
-		if (client) {
-			client.release();
-		}
 		room.isFinalizing = false;
 	}
 };

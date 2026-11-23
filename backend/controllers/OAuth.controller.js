@@ -1,6 +1,6 @@
 import { generateAccessToken } from "../utils/JWTtoken.utils.js";
 import { generateRefreshToken, hashRefreshToken } from "../utils/refreshTokens.utils.js";
-import pool from "../model/db.js";
+import supabase from "../model/supabase.js";
 
 export const googleLoginController = async (request, response) => {
 	try {
@@ -18,13 +18,17 @@ export const googleLoginController = async (request, response) => {
 		const refreshTokenHash = hashRefreshToken(refreshToken);
 		const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-		await pool.query(
-			`
-				INSERT INTO auth_sessions (user_id, token_hash, expires_at)
-				VALUES ($1, $2, $3);
-			`,
-			[user.id, refreshTokenHash, expiresAt],
-		);
+		const { error: insertError } = await supabase
+			.from("auth_sessions")
+			.insert({
+				user_id: user.id,
+				token_hash: refreshTokenHash,
+				expires_at: expiresAt.toISOString(),
+			});
+
+		if (insertError) {
+			throw insertError;
+		}
 
 		response.cookie("refreshToken", refreshToken, {
 			httpOnly: true,

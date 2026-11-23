@@ -3,7 +3,7 @@ import {
     userLoginSchema
 } from '../validation/userAuth.validation.js';
 import bcrypt from 'bcrypt';
-import pool from '../model/db.js';
+import supabase from '../model/supabase.js';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import {
@@ -25,19 +25,25 @@ export const userAuthRegisterController = async (request, response) => {
             return response.status(400).json({
                 success: false,
                 message: validationResult.error.issues
-            })
+            });
         }
 
         const userHashedPassword = await bcrypt.hash(validationResult.data.userPassword, 10);
-        const result = await pool.query(
-            `
-                INSERT INTO users (username, email, password_hash)
-                VALUES ($1, $2, $3)
-                RETURNING *;
-            `, [validationResult.data.userName, validationResult.data.userEmail, userHashedPassword]
-        );
+        const { data: newUser, error: insertError } = await supabase
+            .from("users")
+            .insert({
+                username: validationResult.data.userName,
+                email: validationResult.data.userEmail,
+                password_hash: userHashedPassword
+            })
+            .select()
+            .single();
 
-        const userId = result.rows[0].id;
+        if (insertError) {
+            throw insertError;
+        }
+
+        const userId = newUser.id;
         const verificationToken = generateVerificationToken(userId);
 
         const verificationLink = `http://localhost:5173/verify-email?token=${verificationToken}`;
@@ -61,9 +67,9 @@ export const userAuthRegisterController = async (request, response) => {
     catch (error) {
         response.status(400).json({
             error: error
-        })
+        });
     }
-}
+};
 
 export const userAuthProfileController = async (request, response) => {
     try {
@@ -81,21 +87,23 @@ export const userAuthProfileController = async (request, response) => {
             return response.status(400).json({
                 success: false,
                 message: validationResult.error.issues
-            })
+            });
         }
 
         const userHashedPassword = await bcrypt.hash(data.password, 10);
-        const result = await pool.query(
-            `
-                UPDATE users
-                SET
-                    username = $1,
-                    email = $2,
-                    password_hash = $3
-                WHERE id = $4
-                RETURNING id;
-            `, [data.username, data.email, userHashedPassword, userId]
-        );
+        const { data: updatedUser, error: updateError } = await supabase
+            .from("users")
+            .update({
+                username: data.username,
+                email: data.email,
+                password_hash: userHashedPassword
+            })
+            .eq("id", userId)
+            .select("id");
+
+        if (updateError || !updatedUser || updatedUser.length === 0) {
+            throw updateError || new Error("Failed to update profile");
+        }
 
         response.status(200).json({
             message: "Successfully updated the data into the database"
@@ -104,9 +112,9 @@ export const userAuthProfileController = async (request, response) => {
     catch (error) {
         response.status(400).json({
             error: error
-        })
+        });
     }
-}
+};
 
 export const userAuthLoginController = async (request, response) => {
     try {
@@ -126,22 +134,20 @@ export const userAuthLoginController = async (request, response) => {
                 message: "Email and password are required"
             });
         }
-        const dataBaseStoredUserData = await pool.query(
-            `
-                SELECT *
-                FROM users
-                WHERE email = $1;
-            `,
-            [userEmail]
-        );
 
-        if (dataBaseStoredUserData.rows.length === 0) {
+        const { data: dbUser, error: userError } = await supabase
+            .from("users")
+            .select("*")
+            .eq("email", userEmail)
+            .maybeSingle();
+
+        if (userError || !dbUser) {
             return response.status(401).json({
                 success: false,
                 message: "Invalid email or password"
             });
         }
-        const dbUser = dataBaseStoredUserData.rows[0];
+
         const isPasswordMatch = await bcrypt.compare(
             userPassword,
             dbUser.password_hash
@@ -153,9 +159,7 @@ export const userAuthLoginController = async (request, response) => {
             });
         }
 
-
         const accessToken = generateAccessToken(dbUser.id);
-
 
         const refreshToken = generateRefreshToken();
         const refreshTokenHash = hashRefreshToken(refreshToken);
@@ -163,12 +167,17 @@ export const userAuthLoginController = async (request, response) => {
             Date.now() + 30 * 24 * 60 * 60 * 1000
         );
 
-        await pool.query(
-            `
-                INSERT INTO auth_sessions ( user_id, token_hash, expires_at)
-                VALUES ($1, $2, $3);
-            `, [ dbUser.id, refreshTokenHash, expiresAt ]
-        );
+        const { error: sessionError } = await supabase
+            .from("auth_sessions")
+            .insert({
+                user_id: dbUser.id,
+                token_hash: refreshTokenHash,
+                expires_at: expiresAt.toISOString()
+            });
+
+        if (sessionError) {
+            throw sessionError;
+        }
 
         response.cookie("refreshToken", refreshToken, {
             httpOnly: true,
@@ -177,7 +186,6 @@ export const userAuthLoginController = async (request, response) => {
             maxAge: 30 * 24 * 60 * 60 * 1000,
             path: "/"
         });
-
 
         return response.status(200).json({
             success: true,
@@ -198,7 +206,6 @@ export const userAuthLoginController = async (request, response) => {
 };
 
 export const userAuthRefreshController = async (request, response) => {
-    const client = await pool.connect();
     try {
         const refreshToken = request.cookies.refreshToken;
 
@@ -210,39 +217,28 @@ export const userAuthRefreshController = async (request, response) => {
         }
 
         const refreshTokenHash = hashRefreshToken(refreshToken);
-        await client.query("BEGIN");
+        const newRefreshToken = generateRefreshToken();
+        const newRefreshTokenHash = hashRefreshToken(newRefreshToken);
+        const newExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-        const sessionResult = await client.query(
-            `
-                SELECT *
-                FROM auth_sessions
-                WHERE token_hash = $1
-                FOR UPDATE;
-            `, [refreshTokenHash]
-        );
+        const { data, error } = await supabase.rpc("rotate_refresh_token", {
+            p_old_token_hash: refreshTokenHash,
+            p_new_token_hash: newRefreshTokenHash,
+            p_new_expires_at: newExpiresAt
+        });
 
-        if (sessionResult.rows.length === 0) {
-            await client.query("ROLLBACK");
+        if (error) {
+            throw error;
+        }
 
+        if (data?.status === "invalid_token") {
             return response.status(401).json({
                 success: false,
                 message: "Invalid refresh token"
             });
         }
 
-        const session = sessionResult.rows[0];
-
-        if (session.revoked_at !== null) {
-            await client.query(
-                `
-                    UPDATE auth_sessions
-                    SET revoked_at = CURRENT_TIMESTAMP
-                    WHERE family_id = $1 AND revoked_at IS NULL;
-                `, [session.family_id]
-            );
-
-            await client.query("COMMIT");
-
+        if (data?.status === "reuse_detected") {
             response.clearCookie("refreshToken", {
                 path: "/"
             });
@@ -253,17 +249,7 @@ export const userAuthRefreshController = async (request, response) => {
             });
         }
 
-        if (new Date(session.expires_at) <= new Date()) {
-            await client.query(
-                `
-                    UPDATE auth_sessions
-                    SET revoked_at = CURRENT_TIMESTAMP
-                    WHERE id = $1;
-                `, [session.id]
-            );
-
-            await client.query("COMMIT");
-
+        if (data?.status === "expired") {
             response.clearCookie("refreshToken", {
                 path: "/"
             });
@@ -274,47 +260,19 @@ export const userAuthRefreshController = async (request, response) => {
             });
         }
 
-        const userResult = await client.query(
-            `
-                SELECT id, username, email
-                FROM users
-                WHERE id = $1;
-            `, [session.user_id]
-        );
-        if (userResult.rows.length === 0) {
-            await client.query("ROLLBACK");
-
+        if (data?.status === "user_not_found") {
             return response.status(401).json({
                 success: false,
                 message: "User no longer exists"
             });
         }
-        const user = userResult.rows[0];
-        const accessToken = generateAccessToken(user.id);
-        const newRefreshToken = generateRefreshToken();
-        const newRefreshTokenHash = hashRefreshToken(newRefreshToken);
 
-        const newSessionResult = await client.query(
-            `
-                INSERT INTO auth_sessions ( user_id, token_hash, family_id, expires_at)
-                VALUES ( $1, $2, $3, $4)
-                RETURNING id;
-            `, [ user.id, newRefreshTokenHash, session.family_id, new Date( Date.now() + 30 * 24 * 60 * 60 * 1000) ]
-        );
+        if (data?.status !== "success" || !data?.user_id) {
+            throw new Error("Unexpected rotation result");
+        }
 
-        const newSessionId = newSessionResult.rows[0].id;
-        await client.query(
-            `
-                UPDATE auth_sessions
-                SET
-                    revoked_at = CURRENT_TIMESTAMP,
-                    last_used_at = CURRENT_TIMESTAMP,
-                    replaced_by_session_id = $1
-                WHERE id = $2;
-            `, [ newSessionId, session.id ]
-        );
+        const accessToken = generateAccessToken(data.user_id);
 
-        await client.query("COMMIT");
         response.cookie("refreshToken", newRefreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -330,8 +288,6 @@ export const userAuthRefreshController = async (request, response) => {
     }
 
     catch (error) {
-        await client.query("ROLLBACK");
-
         console.error("Refresh token error:", error);
 
         return response.status(500).json({
@@ -339,12 +295,7 @@ export const userAuthRefreshController = async (request, response) => {
             message: "Failed to refresh access token"
         });
     }
-
-    finally {
-        client.release();
-    }
 };
-
 
 export const userAuthLogoutController = async (request, response) => {
     try {
@@ -357,15 +308,15 @@ export const userAuthLogoutController = async (request, response) => {
         }
 
         const refreshTokenHash = hashRefreshToken(refreshToken);
-        const result = await pool.query(
-            `
-                UPDATE auth_sessions
-                SET revoked_at = CURRENT_TIMESTAMP
-                WHERE token_hash = $1
-                  AND revoked_at IS NULL;
-            `,
-            [refreshTokenHash]
-        );
+        const { error } = await supabase
+            .from("auth_sessions")
+            .update({ revoked_at: new Date().toISOString() })
+            .eq("token_hash", refreshTokenHash)
+            .is("revoked_at", null);
+
+        if (error) {
+            throw error;
+        }
 
         response.clearCookie("refreshToken", {
             path: "/"
@@ -396,32 +347,35 @@ export const userAuthDeleteController = async (request, response) => {
             });
         }
 
-        await pool.query(
-            `
-                DELETE FROM practice_history
-                WHERE user_id = $1;
-            `,
-            [userId]
-        );
+        const { error: practiceError } = await supabase
+            .from("practice_history")
+            .delete()
+            .eq("user_id", userId);
 
-        await pool.query(
-            `
-                DELETE FROM auth_sessions
-                WHERE user_id = $1;
-            `,
-            [userId]
-        );
+        if (practiceError) {
+            throw practiceError;
+        }
 
-        const result = await pool.query(
-            `
-                DELETE FROM users
-                WHERE id = $1
-                RETURNING id;
-            `,
-            [userId]
-        );
+        const { error: sessionError } = await supabase
+            .from("auth_sessions")
+            .delete()
+            .eq("user_id", userId);
 
-        if (result.rowCount === 0) {
+        if (sessionError) {
+            throw sessionError;
+        }
+
+        const { data: deletedUsers, error: userError } = await supabase
+            .from("users")
+            .delete()
+            .eq("id", userId)
+            .select("id");
+
+        if (userError) {
+            throw userError;
+        }
+
+        if (!deletedUsers || deletedUsers.length === 0) {
             return response.status(404).json({
                 success: false,
                 message: "User not found"
@@ -441,5 +395,4 @@ export const userAuthDeleteController = async (request, response) => {
             message: error.message
         });
     }
-}
-
+};

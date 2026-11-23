@@ -2,7 +2,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
-import pool from "../model/db.js";
+import supabase from "../model/supabase.js";
 
 dotenv.config();
 
@@ -25,18 +25,25 @@ passport.use(
 					profile.name?.givenName ||
 					"Google User";
 
-				const existingUser = await pool.query(
-					`SELECT * FROM users WHERE email = $1;`,
-					[email],
-				);
+				const { data: user, error: selectError } = await supabase
+					.from("users")
+					.select("*")
+					.eq("email", email)
+					.maybeSingle();
 
-				if (existingUser.rows.length > 0) {
-					const user = existingUser.rows[0];
+				if (selectError) {
+					return done(selectError);
+				}
+
+				if (user) {
 					if (!user.isverified) {
-						await pool.query(
-							`UPDATE users SET isverified = TRUE WHERE id = $1;`,
-							[user.id],
-						);
+						const { error: updateError } = await supabase
+							.from("users")
+							.update({ isverified: true })
+							.eq("id", user.id);
+						if (updateError) {
+							return done(updateError);
+						}
 					}
 					return done(null, user);
 				}
@@ -46,16 +53,22 @@ passport.use(
 					10,
 				);
 
-				const createdUser = await pool.query(
-					`
-						INSERT INTO users (username, email, password_hash, isverified)
-						VALUES ($1, $2, $3, TRUE)
-						RETURNING *;
-					`,
-					[username, email, googlePasswordPlaceholder],
-				);
+				const { data: createdUser, error: insertError } = await supabase
+					.from("users")
+					.insert({
+						username,
+						email,
+						password_hash: googlePasswordPlaceholder,
+						isverified: true,
+					})
+					.select()
+					.single();
 
-				return done(null, createdUser.rows[0]);
+				if (insertError) {
+					return done(insertError);
+				}
+
+				return done(null, createdUser);
 			} catch (error) {
 				return done(error);
 			}

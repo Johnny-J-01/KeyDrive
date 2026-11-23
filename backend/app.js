@@ -4,6 +4,8 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { createServer }  from 'http';
 import { WebSocketServer } from 'ws'; 
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 
 import AuthRouter from '../backend/routes/userAuth.routes.js';
@@ -22,12 +24,15 @@ dotenv.config();
 const app = express(); 
 const server = createServer(app);
 const wss = new WebSocketServer({ noServer: true });
-const PORT = process.env.PORT; 
+const PORT = process.env.PORT || 3000; 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // middleware: 
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json()); 
 app.use(express.urlencoded({extended: false})); 
-app.use(express.static('/KEYDRIVE/backend/public')); 
+// app.use(express.static('/KEYDRIVE/backend/public')); 
 app.use(cors({
     origin: "http://localhost:5173", 
     allowedHeaders: [
@@ -39,7 +44,8 @@ app.use(cors({
         "POST", 
         "FETCH", 
         "DELETE", 
-        "PATCH"
+        "PATCH", 
+        "OPTIONS"
     ],
     credentials: true
 }));
@@ -82,6 +88,6 @@ server.on('upgrade', (request, socket, head) => {
 
 setUpWebSocketServer(wss);
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0',  () => {
     console.log(`port started at ${PORT}`);
 })

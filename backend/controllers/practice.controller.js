@@ -1,4 +1,4 @@
-import pool from '../model/db.js';
+import supabase from '../model/supabase.js';
 
 const MIN_WORD_COUNT = 1;
 const MAX_WORD_COUNT = 1000;
@@ -10,23 +10,21 @@ export const getPracticeWordsController = async (request, response) => {
 			? 500
 			: Math.min(Math.max(parsedCount, MIN_WORD_COUNT), MAX_WORD_COUNT);
 
-		const result = await pool.query(
-			`
-				SELECT word
-				FROM typing_words
-				ORDER BY RANDOM()
-				LIMIT $1
-			`,
-			[count],
-		);
+		const { data, error } = await supabase.rpc('get_random_typing_words', {
+			p_count: count,
+		});
 
-		if (result.rows.length === 0) {
+		if (error) {
+			throw error;
+		}
+
+		if (!data || data.length === 0) {
 			return response.status(404).json({
 				message: "No words found. Run the typing_words seed SQL first.",
 			});
 		}
 
-		const words = result.rows.map((row) => row.word);
+		const words = data.map((row) => row.word);
 
 		response.status(200).json({
 			words,

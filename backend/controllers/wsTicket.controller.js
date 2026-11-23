@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import pool from "../model/db.js";
+import supabase from "../model/supabase.js";
 
 const tickets = new Map();
 
@@ -25,19 +25,19 @@ export const issueWsTicketController = async (request, response) => {
             });
         }
 
-        const result = await pool.query(
-            `SELECT id, username FROM users WHERE id = $1`,
-            [userId]
-        );
+        const { data: user, error } = await supabase
+            .from("users")
+            .select("id, username")
+            .eq("id", userId)
+            .maybeSingle();
 
-        if (result.rows.length === 0) {
+        if (error || !user) {
             return response.status(401).json({
                 success: false,
                 message: "User not found",
             });
         }
 
-        const user = result.rows[0];
         const ticket = crypto.randomBytes(32).toString("hex");
 
         tickets.set(ticket, {

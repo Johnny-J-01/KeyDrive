@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import dotenv from 'dotenv';
-import pool from "../model/db.js";
+import supabase from "../model/supabase.js";
 
 dotenv.config();
 
@@ -15,42 +15,48 @@ export const emailVerificationController = async (request, response) => {
             });
         }
 
-        const user = await pool.query(
-            `
-                SELECT id, isverified
-                FROM users
-                WHERE id = $1;
-            `, [decoded.userId]
-        )
+        const { data: user, error: userError } = await supabase
+            .from("users")
+            .select("id, isverified")
+            .eq("id", decoded.userId)
+            .maybeSingle();
 
-        if (!user || user.rows.length === 0) {
+        if (userError) {
             return response.status(400).json({
-                message: "User not found!"
-            })
+                message: userError.message,
+            });
         }
 
-        if (user.rows[0].isverified == true) {
+        if (!user) {
+            return response.status(400).json({
+                message: "User not found!"
+            });
+        }
+
+        if (user.isverified == true) {
             return response.status(400).json({
                 message: "Email already Verified",
             });
         }
 
-        const verifiedUser = await pool.query(
-            `
-                UPDATE users
-                SET isverified = True
-                WHERE id = $1
-                RETURNING id;
-            `, [decoded.userId]
-        )
+        const { error: updateError } = await supabase
+            .from("users")
+            .update({ isverified: true })
+            .eq("id", decoded.userId);
+
+        if (updateError) {
+            return response.status(400).json({
+                message: updateError.message,
+            });
+        }
 
         response.status(200).json({
             message: "Registration successfull. Please check your email"
-        })
+        });
     }
     catch(error) {
         response.status(401).json({
             message: error.message,
-        })
+        });
     }
-}
+};
