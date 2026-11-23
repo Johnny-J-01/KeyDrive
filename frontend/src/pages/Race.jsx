@@ -404,7 +404,7 @@ export default function Race() {
 							<Users className="w-10 h-10 text-textMuted mx-auto mb-4" />
 
 							<h3 className="text-lg font-semibold text-white mb-1">
-								No public rooms available
+								No rooms available currently
 							</h3>
 
 							<p className="text-textMuted text-sm">

@@ -135,10 +135,11 @@ export default function Profile() {
 						className="w-16 h-16 rounded-full bg-borderMain p-0.5 object-cover"
 					/>
 					<div>
-						<h2 className="text-2xl font-bold text-white">
-							{!userPersonalData
-								? "johndoe"
-								: userPersonalData.username}
+						<h2>
+							{loading
+								? "Loading..."
+								: userPersonalData?.username ||
+									"Profile unavailable"}
 						</h2>
 						<p className="text-textMuted flex items-center gap-1.5 text-sm mt-0.5">
 							<Clock className="w-3.5 h-3.5" /> Joined August 2026

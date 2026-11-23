@@ -9,10 +9,26 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
+	useRef,
 	useState,
 } from "react";
 
 export const AuthContext = createContext(null);
+
+const decodeJwtPayload = (token) => {
+	try {
+		const base64Payload = token.split(".")[1];
+		const normalized = base64Payload.replace(/-/g, "+").replace(/_/g, "/");
+		const padded = normalized.padEnd(
+			normalized.length + ((4 - (normalized.length % 4)) % 4),
+			"=",
+		);
+
+		return JSON.parse(atob(padded));
+	} catch {
+		return null;
+	}
+};
 
 function AuthProvider({ children }) {
 	const [user, setUser] = useState(() => {
@@ -26,6 +42,7 @@ function AuthProvider({ children }) {
 
 	const [accessToken, setAccessToken] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
+	const refreshPromiseRef = useRef(null);
 
 	const login = useCallback((userData, token) => {
 		setUser(userData);
@@ -48,34 +65,80 @@ function AuthProvider({ children }) {
 		localStorage.removeItem("user");
 	}, []);
 
-	const refreshAccessToken = useCallback(async () => {
-		try {
-			const response = await fetch(`${API_URL}/refresh`, {
-				method: "POST",
-				credentials: "include",
-			});
+	const refreshAccessToken = useCallback(() => {
+		if (refreshPromiseRef.current) {
+			return refreshPromiseRef.current;
+		}
 
-			if (!response.ok) {
-				const storedUser = localStorage.getItem("user");
-				if (!storedUser) {
+		const refreshPromise = (async () => {
+			try {
+				const response = await fetch(`${API_URL}/refresh`, {
+					method: "POST",
+					credentials: "include",
+				});
+
+				if (response.status === 401 || response.status === 403) {
 					setUser(null);
 					setAccessToken(null);
+					localStorage.removeItem("user");
+					return null;
 				}
-				return null;
-			}
 
-			const data = await response.json();
-			const nextToken = data.accessToken || null;
-			setAccessToken(nextToken);
-			return nextToken;
-		} catch (error) {
-			console.error("Failed to refresh access token:", error);
-			setUser(null);
-			setAccessToken(null);
-			return null;
-		} finally {
-			setIsLoading(false);
-		}
+				if (!response.ok) {
+					return null;
+				}
+
+				const data = await response.json();
+				const nextToken = data.accessToken || null;
+
+				if (!nextToken) {
+					return null;
+				}
+
+				const payload = decodeJwtPayload(nextToken);
+
+				if (payload?.userId) {
+					setUser((currentUser) => {
+						if (currentUser?.id === payload.userId) {
+							return currentUser;
+						}
+
+						const restoredUser = { id: payload.userId };
+
+						try {
+							localStorage.setItem(
+								"user",
+								JSON.stringify(restoredUser),
+							);
+						} catch (error) {
+							console.error(
+								"Failed to persist restored user:",
+								error,
+							);
+						}
+
+						return restoredUser;
+					});
+				}
+
+				setAccessToken(nextToken);
+				return nextToken;
+			} catch (error) {
+				console.error("Failed to refresh access token:", error);
+				return null;
+			} finally {
+				setIsLoading(false);
+			}
+		})();
+
+		refreshPromiseRef.current = refreshPromise;
+		void refreshPromise.finally(() => {
+			if (refreshPromiseRef.current === refreshPromise) {
+				refreshPromiseRef.current = null;
+			}
+		});
+
+		return refreshPromise;
 	}, []);
 
 	const fetchWithAuth = useCallback(
