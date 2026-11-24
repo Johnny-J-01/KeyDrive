@@ -7,6 +7,7 @@ import {
 	Zap,
 	Shield,
 	Lock,
+	User,
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
@@ -48,6 +49,7 @@ export default function Profile() {
 	const [performanceHistory, setPerformanceHistory] = useState([]);
 	const [historyLoading, setHistoryLoading] = useState(true);
 	const [historyError, setHistoryError] = useState(null);
+	const [avatarError, setAvatarError] = useState(false);
 	const navigate = useNavigate();
 	const { accessToken, loading, fetchWithAuth } = useAuth();
 
@@ -125,15 +127,18 @@ export default function Profile() {
 		<div className="max-w-5xl mx-auto py-8 flex flex-col gap-6">
 			<div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-6 p-6 bg-surface border border-borderMain rounded-2xl">
 				<div className="flex items-center gap-4">
-					<img
-						src={
-							!userPersonalData
-								? "👲"
-								: userPersonalData.avatar_url
-						}
-						alt="avatar"
-						className="w-16 h-16 rounded-full bg-borderMain p-0.5 object-cover"
-					/>
+					{userPersonalData?.avatar_url && !avatarError ? (
+						<img
+							src={userPersonalData.avatar_url}
+							alt={userPersonalData?.username || "avatar"}
+							className="w-16 h-16 rounded-full bg-borderMain p-0.5 object-cover"
+							onError={() => setAvatarError(true)}
+						/>
+					) : (
+						<div className="w-16 h-16 rounded-full bg-[#202c42] border border-borderMain flex items-center justify-center text-slate-400">
+							<User className="w-8 h-8" />
+						</div>
+					)}
 					<div>
 						<h2>
 							{loading
@@ -279,7 +284,7 @@ function PerformanceGraph({ history, loading, error }) {
 			filteredData.length,
 	);
 
-	const chartData = filteredData.map((item) => {
+	const chartData = filteredData.map((item, index) => {
 		let label = "";
 		if (item.timestamp) {
 			const d = new Date(item.timestamp);
@@ -291,6 +296,7 @@ function PerformanceGraph({ history, loading, error }) {
 			}
 		}
 		return {
+			pointIndex: index,
 			date: label,
 			wpm: item.wpm || 0,
 			accuracy: item.accuracy || 0,
@@ -385,7 +391,8 @@ function PerformanceGraph({ history, loading, error }) {
 						vertical={false}
 					/>
 					<XAxis
-						dataKey="date"
+						dataKey="pointIndex"
+						tickFormatter={(val) => chartData[val]?.date ?? ""}
 						axisLine={false}
 						tickLine={false}
 						tickMargin={12}
@@ -436,6 +443,8 @@ function PerformanceGraph({ history, loading, error }) {
 						dataKey="wpm"
 						fill="url(#wpmGradient)"
 						stroke="none"
+						legendType="none"
+						tooltipType="none"
 						animationDuration={1000}
 						animationEasing="ease-out"
 					/>
@@ -496,7 +505,7 @@ function CustomTooltip({ active, payload, label }) {
 	const wpmEntry = payload.find((p) => p.dataKey === "wpm");
 	const accEntry = payload.find((p) => p.dataKey === "accuracy");
 
-	let formattedDate = label;
+	let formattedDate = data?.date || label;
 	if (data?.timestamp) {
 		const d = new Date(data.timestamp);
 		if (!isNaN(d.getTime())) {
@@ -514,29 +523,28 @@ function CustomTooltip({ active, payload, label }) {
 			? "⌨️  Practice"
 			: `🏁  Race${data?.placement ? ` #${data.placement}` : ""}`;
 
+	const speedValue = wpmEntry?.value ?? data?.wpm ?? 0;
+	const accValue = accEntry?.value ?? data?.accuracy ?? 0;
+
 	return (
 		<div className="rounded-lg border border-[#2e3440] bg-[#0f1117]/95 px-4 py-3 text-xs shadow-xl backdrop-blur-sm font-mono">
 			<p className="text-[#94a3b8] mb-1">{formattedDate}</p>
 			<p className="text-[#e2e8f0] mb-2 text-[11px]">{typeLabel}</p>
 			<div className="flex flex-col gap-1">
-				{wpmEntry && (
-					<div className="flex items-center gap-2">
-						<span className="w-2 h-2 rounded-full bg-[#e2b714] inline-block" />
-						<span className="text-[#94a3b8]">Speed</span>
-						<span className="text-[#e2e8f0] font-medium ml-auto">
-							{wpmEntry.value} wpm
-						</span>
-					</div>
-				)}
-				{accEntry && (
-					<div className="flex items-center gap-2">
-						<span className="w-2 h-2 rounded-full bg-[#7c8aff] inline-block" />
-						<span className="text-[#94a3b8]">Accuracy</span>
-						<span className="text-[#e2e8f0] font-medium ml-auto">
-							{accEntry.value}%
-						</span>
-					</div>
-				)}
+				<div className="flex items-center gap-2">
+					<span className="w-2 h-2 rounded-full bg-[#e2b714] inline-block" />
+					<span className="text-[#94a3b8]">Speed</span>
+					<span className="text-[#e2e8f0] font-medium ml-auto">
+						{speedValue} wpm
+					</span>
+				</div>
+				<div className="flex items-center gap-2">
+					<span className="w-2 h-2 rounded-full bg-[#7c8aff] inline-block" />
+					<span className="text-[#94a3b8]">Accuracy</span>
+					<span className="text-[#e2e8f0] font-medium ml-auto">
+						{accValue}%
+					</span>
+				</div>
 			</div>
 		</div>
 	);
