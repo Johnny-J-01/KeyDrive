@@ -148,6 +148,14 @@ export const setUpWebSocketServer = (wss) => {
 				return;
 			}
 
+			if (type === "room:list") {
+				sendTo(socket, {
+					type: "room:list",
+					payload: rooms.map(sanitizeRoom),
+				});
+				return;
+			}
+
 			if (
 				type === "room:create" ||
 				type === "room:join" ||

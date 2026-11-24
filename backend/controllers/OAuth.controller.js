@@ -1,8 +1,13 @@
-import { generateAccessToken } from "../utils/JWTtoken.utils.js";
-import { generateRefreshToken, hashRefreshToken } from "../utils/refreshTokens.utils.js";
-import pool from "../model/db.js";
+import { generateAccessToken } from "../utils/jwttoken.utils.js";
+import {
+	generateRefreshToken,
+	hashRefreshToken,
+} from "../utils/refreshTokens.utils.js";
+import supabase from "../model/supabase.js";
 
 export const googleLoginController = async (request, response) => {
+	const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+
 	try {
 		const user = request.user;
 
@@ -18,27 +23,32 @@ export const googleLoginController = async (request, response) => {
 		const refreshTokenHash = hashRefreshToken(refreshToken);
 		const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-		await pool.query(
-			`
-				INSERT INTO auth_sessions (user_id, token_hash, expires_at)
-				VALUES ($1, $2, $3);
-			`,
-			[user.id, refreshTokenHash, expiresAt],
-		);
+		const { error: insertError } = await supabase
+			.from("auth_sessions")
+			.insert({
+				user_id: user.id,
+				token_hash: refreshTokenHash,
+				expires_at: expiresAt.toISOString(),
+			});
+
+		if (insertError) {
+			throw insertError;
+		}
+
+		const isProd = process.env.NODE_ENV === "production";
 
 		response.cookie("refreshToken", refreshToken, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "strict",
+			secure: isProd,
+			sameSite: isProd ? "none" : "lax",
 			maxAge: 30 * 24 * 60 * 60 * 1000,
 			path: "/",
 		});
-
 		return response.redirect(
-			`http://localhost:5173/login?oauth=success&token=${encodeURIComponent(accessToken)}`,
+			`${clientUrl}/login?oauth=success&token=${encodeURIComponent(accessToken)}`,
 		);
 	} catch (error) {
 		console.error("Google OAuth error:", error);
-		return response.redirect("http://localhost:5173/login?oauth=failed");
+		return response.redirect(`${clientUrl}/login?oauth=failed`);
 	}
 };

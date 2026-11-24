@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, KeyRound, Mail } from "lucide-react";
 import { toast } from "sonner";
+import API_URL from "../config/api.js";
 
 function ForgotPassword() {
 	const emailRef = useRef(null);
@@ -22,7 +23,7 @@ function ForgotPassword() {
 
 		try {
 			const response = await fetch(
-				"http://localhost:3000/api/password/ForgotPassword",
+				`${API_URL}/api/password/ForgotPassword`,
 				{
 					method: "POST",
 					headers: {

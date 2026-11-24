@@ -3,6 +3,7 @@ import passport from "../config/passport.js";
 import { googleLoginController } from "../controllers/OAuth.controller.js";
 
 const router = express.Router();
+const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 
 router.get(
 	"/auth/google",
@@ -15,7 +16,7 @@ router.get(
 router.get(
 	"/auth/google/callback",
 	passport.authenticate("google", {
-		failureRedirect: "http://localhost:5173/login?oauth=failed",
+		failureRedirect: `${clientUrl}/login?oauth=failed`,
 		session: false,
 	}),
 	googleLoginController,

@@ -3,6 +3,45 @@ import RaceGame3D from "../components/RaceGame3D";
 import confetti from "canvas-confetti";
 import clsx from "clsx";
 
+function calculateTypingStats(currentInput, currentPassage, elapsedSeconds) {
+	let correctChars = 0;
+	let errors = 0;
+
+	for (let i = 0; i < currentInput.length; i++) {
+		if (currentInput[i] === currentPassage[i]) {
+			correctChars++;
+		} else {
+			errors++;
+		}
+	}
+
+	const minutes = Math.max(1, elapsedSeconds) / 60;
+	const wordsTyped = correctChars / 5;
+	const wpm = elapsedSeconds > 0 ? Math.round(wordsTyped / minutes) : 0;
+
+	const accuracy =
+		currentInput.length > 0
+			? Math.round((correctChars / currentInput.length) * 100)
+			: 0;
+
+	return {
+		wpm,
+		accuracy,
+		errors,
+		chars: currentInput.length,
+	};
+}
+
+function getFullInput(completed, currentWord, isDone) {
+	if (isDone) {
+		return completed.join(" ");
+	}
+	if (completed.length === 0) {
+		return currentWord;
+	}
+	return completed.join(" ") + " " + currentWord;
+}
+
 export default function LiveRace({ room, userData, socketRef }) {
 	const [countdown, setCountdown] = useState(5);
 	const [isStarted, setIsStarted] = useState(false);
@@ -14,9 +53,17 @@ export default function LiveRace({ room, userData, socketRef }) {
 	const [currentWordInput, setCurrentWordInput] = useState("");
 	const [startTime, setStartTime] = useState(null);
 	const [isFinished, setIsFinished] = useState(false);
+	const [localStats, setLocalStats] = useState({ wpm: 0, accuracy: 0 });
 	const inputRef = useRef(null);
 	const lastProgressRef = useRef(0);
 	const totalKeystrokesRef = useRef(0);
+	const completedWordsRef = useRef([]);
+	const currentWordInputRef = useRef("");
+	const isFinishedRef = useRef(false);
+
+	completedWordsRef.current = completedWords;
+	currentWordInputRef.current = currentWordInput;
+	isFinishedRef.current = isFinished;
 
 	const currentUserId = userData?.id;
 
@@ -29,7 +76,7 @@ export default function LiveRace({ room, userData, socketRef }) {
 		}
 
 		setIsStarted(true);
-		setStartTime(Date.now());
+		// setStartTime(Date.now());
 		if (inputRef.current) inputRef.current.focus();
 	}, [countdown]);
 
@@ -44,9 +91,43 @@ export default function LiveRace({ room, userData, socketRef }) {
 		}
 	}, [isFinished]);
 
+	useEffect(() => {
+		if (!isStarted || isFinished || !startTime) return;
+
+		const interval = setInterval(() => {
+			const elapsedSeconds = Math.max(
+				1,
+				Math.floor((Date.now() - startTime) / 1000),
+			);
+			const fullInput = getFullInput(
+				completedWordsRef.current,
+				currentWordInputRef.current,
+				isFinishedRef.current,
+			);
+			if (fullInput.length > 0) {
+				const currentStats = calculateTypingStats(
+					fullInput,
+					passage,
+					elapsedSeconds,
+				);
+				setLocalStats({
+					wpm: currentStats.wpm,
+					accuracy: currentStats.accuracy,
+				});
+			}
+		}, 1000);
+
+		return () => clearInterval(interval);
+	}, [isStarted, isFinished, startTime, passage]);
+
 	const handleInput = (event) => {
 		if (!isStarted || isFinished) return;
+		let currentStartTime = startTime;
 
+		if (!currentStartTime) {
+			currentStartTime = Date.now();
+			setStartTime(currentStartTime);
+		}
 		const value = event.target.value;
 		const currentWordIndex = completedWords.length;
 		const targetWord = words[currentWordIndex];
@@ -63,10 +144,17 @@ export default function LiveRace({ room, userData, socketRef }) {
 			lastProgressRef.current = 100;
 			totalKeystrokesRef.current += 1;
 
-			const elapsedMinutes = Math.max(0.001, (Date.now() - startTime) / 60000);
-			const totalChars = passage.length;
-			const wpm = Math.round((totalChars / 5) / elapsedMinutes);
-			const accuracy = Math.min(100, Math.max(0, Math.round((totalChars / totalKeystrokesRef.current) * 100)));
+			const elapsedSeconds = Math.max(
+				1,
+				(Date.now() - currentStartTime) / 1000,
+			);
+			const fullInput = getFullInput(newCompleted, "", true);
+			const { wpm, accuracy } = calculateTypingStats(
+				fullInput,
+				passage,
+				elapsedSeconds,
+			);
+			setLocalStats({ wpm, accuracy });
 
 			socketRef.current?.send(
 				JSON.stringify({
@@ -95,10 +183,17 @@ export default function LiveRace({ room, userData, socketRef }) {
 					lastProgressRef.current = 100;
 					totalKeystrokesRef.current += 1;
 
-					const elapsedMinutes = Math.max(0.001, (Date.now() - startTime) / 60000);
-					const totalChars = passage.length;
-					const wpm = Math.round((totalChars / 5) / elapsedMinutes);
-					const accuracy = Math.min(100, Math.max(0, Math.round((totalChars / totalKeystrokesRef.current) * 100)));
+					const elapsedSeconds = Math.max(
+						1,
+						(Date.now() - currentStartTime) / 1000,
+					);
+					const fullInput = getFullInput(newCompleted, "", true);
+					const { wpm, accuracy } = calculateTypingStats(
+						fullInput,
+						passage,
+						elapsedSeconds,
+					);
+					setLocalStats({ wpm, accuracy });
 
 					socketRef.current?.send(
 						JSON.stringify({
@@ -117,13 +212,27 @@ export default function LiveRace({ room, userData, socketRef }) {
 
 				let completedChars = 0;
 				newCompleted.forEach((w) => (completedChars += w.length + 1));
-				const progress = Math.min(99, Math.max(lastProgressRef.current, Math.round((completedChars / passage.length) * 100)));
+				const progress = Math.min(
+					99,
+					Math.max(
+						lastProgressRef.current,
+						Math.round((completedChars / passage.length) * 100),
+					),
+				);
 				lastProgressRef.current = progress;
 
 				totalKeystrokesRef.current += 1;
-				const elapsedMinutes = Math.max(0.001, (Date.now() - startTime) / 60000);
-				const wpm = Math.round((completedChars / 5) / elapsedMinutes);
-				const accuracy = Math.min(100, Math.max(0, Math.round((completedChars / totalKeystrokesRef.current) * 100)));
+				const elapsedSeconds = Math.max(
+					1,
+					(Date.now() - currentStartTime) / 1000,
+				);
+				const fullInput = getFullInput(newCompleted, "", false);
+				const { wpm, accuracy } = calculateTypingStats(
+					fullInput,
+					passage,
+					elapsedSeconds,
+				);
+				setLocalStats({ wpm, accuracy });
 
 				socketRef.current?.send(
 					JSON.stringify({
@@ -140,6 +249,18 @@ export default function LiveRace({ room, userData, socketRef }) {
 			} else {
 				setCurrentWordInput(value);
 				totalKeystrokesRef.current += 1;
+
+				const elapsedSeconds = Math.max(
+					1,
+					(Date.now() - currentStartTime) / 1000,
+				);
+				const fullInput = getFullInput(completedWords, value, false);
+				const { wpm, accuracy } = calculateTypingStats(
+					fullInput,
+					passage,
+					elapsedSeconds,
+				);
+				setLocalStats({ wpm, accuracy });
 			}
 		} else {
 			setCurrentWordInput(value);
@@ -157,13 +278,28 @@ export default function LiveRace({ room, userData, socketRef }) {
 			let completedChars = 0;
 			completedWords.forEach((w) => (completedChars += w.length + 1));
 			const currentTotalCorrect = completedChars + matchingChars;
-			const progress = Math.min(99, Math.max(lastProgressRef.current, Math.round((currentTotalCorrect / passage.length) * 100)));
+			const progress = Math.min(
+				99,
+				Math.max(
+					lastProgressRef.current,
+					Math.round((currentTotalCorrect / passage.length) * 100),
+				),
+			);
+
+			const elapsedSeconds = Math.max(
+				1,
+				(Date.now() - currentStartTime) / 1000,
+			);
+			const fullInput = getFullInput(completedWords, value, false);
+			const { wpm, accuracy } = calculateTypingStats(
+				fullInput,
+				passage,
+				elapsedSeconds,
+			);
+			setLocalStats({ wpm, accuracy });
 
 			if (progress > lastProgressRef.current) {
 				lastProgressRef.current = progress;
-				const elapsedMinutes = Math.max(0.001, (Date.now() - startTime) / 60000);
-				const wpm = Math.round((currentTotalCorrect / 5) / elapsedMinutes);
-				const accuracy = Math.min(100, Math.max(0, Math.round((currentTotalCorrect / totalKeystrokesRef.current) * 100)));
 
 				socketRef.current?.send(
 					JSON.stringify({
@@ -182,7 +318,9 @@ export default function LiveRace({ room, userData, socketRef }) {
 	};
 
 	const calculateMyRank = (myProgress) => {
-		const others = (room?.players || []).filter((p) => p.id !== currentUserId);
+		const others = (room?.players || []).filter(
+			(p) => p.id !== currentUserId,
+		);
 		let rank = 1;
 		others.forEach((p) => {
 			if (p.isFinished && !me.isFinished) {
@@ -265,12 +403,26 @@ export default function LiveRace({ room, userData, socketRef }) {
 							</div>
 							{sortedPlayers.map((player) => {
 								const isCurrent = player.id === currentUserId;
-								const playerProgress = Math.min(100, Math.round(player.progress || 0));
+								const playerProgress = Math.min(
+									100,
+									Math.round(player.progress || 0),
+								);
 								return (
-									<div key={player.id} className="flex flex-col gap-1">
+									<div
+										key={player.id}
+										className="flex flex-col gap-1"
+									>
 										<div className="flex justify-between text-xs text-textMuted mb-1 font-bold">
-											<span className={clsx(isCurrent ? "text-primary" : "text-white")}>
-												#{player.rank || 1} {player.username} {isCurrent && "(You)"}
+											<span
+												className={clsx(
+													isCurrent
+														? "text-primary"
+														: "text-white",
+												)}
+											>
+												#{player.rank || 1}{" "}
+												{player.username}{" "}
+												{isCurrent && "(You)"}
 												{player.isFinished && " • Done"}
 											</span>
 											<span>{playerProgress}%</span>
@@ -279,7 +431,9 @@ export default function LiveRace({ room, userData, socketRef }) {
 											<div
 												className={clsx(
 													"h-full transition-all duration-300",
-													isCurrent ? "bg-primary" : "bg-red-500",
+													isCurrent
+														? "bg-primary"
+														: "bg-red-500",
 												)}
 												style={{
 													width: `${playerProgress}%`,
@@ -297,7 +451,7 @@ export default function LiveRace({ room, userData, socketRef }) {
 									WPM
 								</span>
 								<span className="text-3xl font-bold font-mono text-white">
-									{me.wpm || 0}
+									{isStarted ? localStats.wpm : 0}
 								</span>
 							</div>
 							<div className="flex flex-col items-center border-l border-borderMain pl-6">
@@ -305,7 +459,13 @@ export default function LiveRace({ room, userData, socketRef }) {
 									Accuracy
 								</span>
 								<span className="text-3xl font-bold font-mono text-white">
-									{me.accuracy !== undefined ? `${me.accuracy}%` : "100%"}
+									{isStarted
+										? localStats.accuracy !== undefined
+											? `${localStats.accuracy}%`
+											: me.accuracy !== undefined
+												? `${me.accuracy}%`
+												: "100%"
+										: "100%"}
 								</span>
 							</div>
 						</div>

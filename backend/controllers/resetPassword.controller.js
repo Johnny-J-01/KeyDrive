@@ -1,9 +1,9 @@
-import { generateResetToken } from "../utils/JWTtoken.utils.js";
+import { generateResetToken } from "../utils/jwttoken.utils.js";
 import { sendEmail } from '../services/mail.services.js';
 import { resetPasswordTemplate } from '../templates/resetPassword.template.js';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt'
-import pool from '../model/db.js'
+import bcrypt from 'bcrypt';
+import supabase from '../model/supabase.js';
 
 export const forgotPasswordController = async (request, response) => {
     try {
@@ -16,23 +16,23 @@ export const forgotPasswordController = async (request, response) => {
             });
         }
 
-        const result = await pool.query(
-            `
-                SELECT id, username, email
-                FROM users
-                WHERE email = $1
-            `,
-            [email.trim()]
-        );
+        const { data: user, error: selectError } = await supabase
+            .from("users")
+            .select("id, username, email")
+            .eq("email", email.trim())
+            .maybeSingle();
 
-        if (result.rows.length === 0) {
+        if (selectError) {
+            throw selectError;
+        }
+
+        if (!user) {
             return response.status(404).json({
                 success: false,
                 message: "User not found"
             });
         }
 
-        const user = result.rows[0];
         const resetToken = generateResetToken(user.id);
         const resetLink = `http://localhost:5173/reset-password?token=${resetToken}`;
 
@@ -97,18 +97,15 @@ export const resetPasswordController = async (request, response) => {
 
         const hashedNewPassword = await bcrypt.hash(password.trim(), 10);
 
-        const updatePassword = await pool.query(
-            `
-                UPDATE users
-                SET
-                    password_hash = $1
-                WHERE id = $2
-                RETURNING id;
-            `,
-            [hashedNewPassword, userId]
-        );
+        const { data: updatePassword, error: updateError } = await supabase
+            .from("users")
+            .update({
+                password_hash: hashedNewPassword
+            })
+            .eq("id", userId)
+            .select("id");
 
-        if (updatePassword.rows.length === 0) {
+        if (updateError || !updatePassword || updatePassword.length === 0) {
             return response.status(400).json({
                 success: false,
                 message: "Failed to reset the password"

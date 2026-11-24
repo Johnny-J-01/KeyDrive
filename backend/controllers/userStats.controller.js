@@ -1,30 +1,34 @@
-import express, { response } from 'express';
+import express from 'express';
 import dotenv from 'dotenv';
-import pool from '../model/db.js';
+import supabase from '../model/supabase.js';
 import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
 export const userProfileController = async (request, response) => {
     try {
-        const userPersonalData = await pool.query(
-            `
-                SELECT * 
-                FROM users
-                WHERE id = $1
-            `, [request.user.userId]
-        )
-        console.log(userPersonalData);
+        const { data: rows, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', request.user.userId);
+
+        if (error) {
+            return response.status(400).json({
+                error: error.message
+            });
+        }
+
+        console.log(rows);
         response.status(200).json({
-            data: userPersonalData
-        })
+            data: { rows: rows || [] }
+        });
     }
     catch (error) {
         response.status(400).json({
             error: error
-        })
+        });
     }
-}
+};
 
 export const userStatsPostController = async (request, response) => {
     try {
@@ -44,26 +48,40 @@ export const userStatsPostController = async (request, response) => {
             });
         }
 
-        const result = await pool.query(
-            `
-                INSERT INTO practice_history (user_id, mode, word_count, duration_seconds, wpm, accuracy, errors, started_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                RETURNING *;
-            `, [request.user.userId, data.mode, data.word_count, data.duration_seconds, data.wpm, data.accuracy, data.errors, data.started_at]
-        );
+        const { data: insertedData, error } = await supabase
+            .from('practice_history')
+            .insert({
+                user_id: request.user.userId,
+                mode: data.mode,
+                word_count: data.word_count,
+                duration_seconds: data.duration_seconds,
+                wpm: data.wpm,
+                accuracy: data.accuracy,
+                errors: data.errors,
+                started_at: data.started_at
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error("DATABASE ERROR:", error);
+            return response.status(400).json({
+                error: error.message
+            });
+        }
 
         response.status(201).json({
             message: "Data updated in the database successfully!!",
-            data: result.rows[0]
-        })
+            data: insertedData
+        });
     }
     catch (error) {
         console.error("DATABASE ERROR:", error);
         response.status(400).json({
             error: error.message
-        })
+        });
     }
-}
+};
 
 export const userStatsGetController = async (request, response) => {
     try {
@@ -76,37 +94,40 @@ export const userStatsGetController = async (request, response) => {
             });
         }
 
-        const result = await pool.query(
-            `
-                SELECT
-                    ROUND(AVG(wpm), 2) as avg_wpm,
-                    ROUND(AVG(accuracy), 2) as avg_accuracy,
-                    COUNT(*) as total_sessions
-                FROM practice_history
-                WHERE user_id = $1;
-            `,
-            [userId]
-        );
+        const { data: practiceStats, error: practiceError } = await supabase
+            .rpc('get_user_practice_stats', { p_user_id: userId });
 
-        const avgWpm = result.rows[0]?.avg_wpm ?? 0;
-        const avgAcc = result.rows[0]?.avg_accuracy ?? 0;
+        if (practiceError) {
+            console.error("DATABASE ERROR:", practiceError);
+            return response.status(400).json({
+                error: practiceError.message
+            });
+        }
 
-        const statsResult = await pool.query(
-            `
-                SELECT races_won, total_races
-                FROM user_stats
-                WHERE user_id = $1;
-            `,
-            [userId]
-        );
+        const avgWpm = practiceStats?.[0]?.avg_wpm ?? 0;
+        const avgAcc = practiceStats?.[0]?.avg_accuracy ?? 0;
+        const totalSessions = practiceStats?.[0]?.total_sessions ?? 0;
 
-        const racesWon = statsResult.rows[0]?.races_won ?? 0;
-        const totalRaces = statsResult.rows[0]?.total_races ?? 0;
+        const { data: statsData, error: statsError } = await supabase
+            .from('user_stats')
+            .select('races_won, total_races')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (statsError) {
+            console.error("DATABASE ERROR:", statsError);
+            return response.status(400).json({
+                error: statsError.message
+            });
+        }
+
+        const racesWon = statsData?.races_won ?? 0;
+        const totalRaces = statsData?.total_races ?? 0;
 
         const statData = {
             AVG_WPM: avgWpm,
             AVG_Acc: avgAcc,
-            total_sessions: result.rows[0]?.total_sessions ?? 0,
+            total_sessions: Number(totalSessions),
             racesWon: Number(racesWon),
             races_won: Number(racesWon),
             totalRaces: Number(totalRaces),
@@ -121,9 +142,9 @@ export const userStatsGetController = async (request, response) => {
         console.error("DATABASE ERROR:", error);
         return response.status(400).json({
             error: error.message
-        })
+        });
     }
-}
+};
 
 export const allUserDataController = async (request, response) => {
     try {
@@ -155,66 +176,17 @@ export const allUserDataController = async (request, response) => {
             }
         }
 
-        let dateCondition = "";
-        switch (filter) {
-            case "Daily":
-                dateCondition = `
-                    AND practice_history.started_at >= CURRENT_DATE
-                `;
-                break;
-
-            case "Weekly":
-                dateCondition = `
-                    AND practice_history.started_at >= DATE_TRUNC('week', CURRENT_DATE)
-                `;
-                break;
-
-            case "Monthly":
-                dateCondition = `
-                    AND practice_history.started_at >= DATE_TRUNC('month', CURRENT_DATE)
-                `;
-                break;
-
-            case "All Time":
-                dateCondition = "";
-                break;
-
-            default:
-                return response.status(400).json({
-                    message: "Invalid leaderboard filter",
-                });
+        if (!["Daily", "Weekly", "Monthly", "All Time"].includes(filter)) {
+            return response.status(400).json({
+                message: "Invalid leaderboard filter",
+            });
         }
 
-        const result = await pool.query(
-            `
-                SELECT *
-                FROM (
-                    SELECT DISTINCT ON (users.id)
-                        users.id,
-                        users.username,
-                        users.avatar_url,
-                        practice_history.wpm AS max_wpm,
-                        practice_history.accuracy,
-                        practice_history.started_at AS date,
-                        COALESCE(user_stats.races_won, 0) AS "racesWon",
-                        COALESCE(user_stats.races_won, 0) AS races_won
-                    FROM users
-                    JOIN practice_history
-                        ON users.id = practice_history.user_id
-                    LEFT JOIN user_stats
-                        ON users.id = user_stats.user_id
-                    WHERE 1 = 1
-                    ${dateCondition}
-                    ORDER BY
-                        users.id,
-                        practice_history.wpm DESC,
-                        practice_history.started_at DESC
-                ) AS leaderboard
-                ORDER BY max_wpm DESC;
-            `
-        );
+        const { data: rows, error } = await supabase
+            .rpc('get_leaderboard', { p_filter: filter });
 
-        if (!result) {
+        if (error) {
+            console.error(error);
             return response.status(400).json({
                 message: "Failed to Fetch Data"
             });
@@ -222,7 +194,7 @@ export const allUserDataController = async (request, response) => {
 
         return response.status(200).json({
             message: "Data successfully fetched",
-            data: result.rows
+            data: rows || []
         });
     }
     catch (error) {
@@ -231,7 +203,7 @@ export const allUserDataController = async (request, response) => {
             error: error
         });
     }
-}
+};
 
 export const userPerformanceHistoryController = async (request, response) => {
     try {
@@ -244,40 +216,17 @@ export const userPerformanceHistoryController = async (request, response) => {
             });
         }
 
-        const result = await pool.query(
-            `
-                SELECT *
-                FROM (
-                    SELECT
-                        ph.wpm,
-                        ph.accuracy,
-                        ph.started_at AS timestamp,
-                        'Practice' AS type,
-                        NULL::INT AS placement
-                    FROM practice_history ph
-                    WHERE ph.user_id = $1
-                      AND ph.started_at IS NOT NULL
+        const { data: rows, error } = await supabase
+            .rpc('get_user_performance_history', { p_user_id: userId });
 
-                    UNION ALL
+        if (error) {
+            console.error("DATABASE ERROR:", error);
+            return response.status(400).json({
+                error: error.message
+            });
+        }
 
-                    SELECT
-                        rp.wpm,
-                        rp.accuracy,
-                        rp.completed_at AS timestamp,
-                        'Multiplayer Race' AS type,
-                        rp.placement
-                    FROM race_participants rp
-                    JOIN races r ON rp.race_id = r.id
-                    WHERE rp.user_id = $1
-                      AND r.status = 'completed'
-                      AND rp.completed_at IS NOT NULL
-                ) AS performance_history
-                ORDER BY timestamp ASC;
-            `,
-            [userId]
-        );
-
-        const formatted = result.rows.map((row) => ({
+        const formatted = (rows || []).map((row) => ({
             wpm: Number(row.wpm),
             accuracy: Number(row.accuracy),
             timestamp: row.timestamp,

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import API_URL from "../config/api.js";
 
 const VerifyEmail = () => {
 	const [status, setStatus] = useState("loading");
@@ -16,7 +17,7 @@ const VerifyEmail = () => {
 
 		const verifyEmail = async () => {
 			const response = await fetch(
-				`http://localhost:3000/api/users/verify-email/${token}`,
+				`${API_URL}/api/users/verify-email/${token}`,
 				{
 					method: "GET",
 					credentials: "include",
