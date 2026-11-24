@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Keyboard } from "lucide-react";
+import { Keyboard, Eye, EyeOff } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import API_URL from "../config/api.js";
 
@@ -10,6 +10,7 @@ export default function Register() {
 		userEmail: "",
 		userPassword: "",
 	});
+	const [showPassword, setShowPassword] = React.useState(false);
 
 	const handleFormDataChange = (event) => {
 		const { name, value } = event.target;
@@ -90,14 +91,29 @@ export default function Register() {
 						<label className="text-sm font-medium text-textMuted">
 							Password
 						</label>
-						<input
-							type="password"
-							className="px-4 py-2.5 rounded-lg bg-background border border-borderMain text-white focus:outline-none focus:border-primary transition-colors"
-							placeholder="••••••••"
-							name="userPassword"
-							value={userFormData.userPassword}
-							onChange={handleFormDataChange}
-						/>
+						<div className="relative">
+							<input
+								type={showPassword ? "text" : "password"}
+								className="w-full px-4 py-2.5 pr-12 rounded-lg bg-background border border-borderMain text-white focus:outline-none focus:border-primary transition-colors"
+								placeholder="••••••••"
+								name="userPassword"
+								value={userFormData.userPassword}
+								onChange={handleFormDataChange}
+							/>
+							<button
+								type="button"
+								onClick={() =>
+									setShowPassword((prev) => !prev)
+								}
+								className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+							>
+								{showPassword ? (
+									<EyeOff size={18} />
+								) : (
+									<Eye size={18} />
+								)}
+							</button>
+						</div>
 					</div>
 					<button className="mt-4 w-full py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-colors">
 						Create Account

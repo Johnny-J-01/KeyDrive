@@ -9,6 +9,7 @@ import {
 	EyeOff,
 	LogOut,
 	Trash2,
+	Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../main";
@@ -240,7 +241,7 @@ function EditProfile() {
 							</label>
 
 							<div className="relative">
-								<Mail
+								<Lock
 									size={18}
 									className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
 								/>

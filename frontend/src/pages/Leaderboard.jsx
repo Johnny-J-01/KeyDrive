@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trophy, Search, Medal } from "lucide-react";
+import { Trophy, Search, Medal, User } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { useAuth } from "../main";
@@ -23,6 +23,7 @@ export default function Leaderboard() {
 	const [search, setSearch] = useState("");
 	const [allUsersData, setAllUsersData] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const [failedAvatars, setFailedAvatars] = useState({});
 	const { fetchWithAuth, loading, user, accessToken } = useAuth();
 	const isAuthenticated = Boolean(user || accessToken);
 
@@ -168,31 +169,48 @@ export default function Leaderboard() {
 								>
 									<td className="px-6 py-4 font-mono font-bold">
 										{index === 0 && (
-											<Medal className="inline w-5 h-5 text-yellow-400 mr-2" />
+											<Medal className="inline w-5 h-5 text-yellow-400" />
 										)}
 										{index === 1 && (
-											<Medal className="inline w-5 h-5 text-gray-300 mr-2" />
+											<Medal className="inline w-5 h-5 text-gray-300" />
 										)}
 										{index === 2 && (
-											<Medal className="inline w-5 h-5 text-amber-600 mr-2" />
+											<Medal className="inline w-5 h-5 text-amber-600" />
 										)}
 										{index > 2 && (
-											<span className="ml-7 text-textMuted">
+											<span className="text-textMuted">
 												#{index + 1}
 											</span>
 										)}
 									</td>
 									<td className="px-6 py-4">
 										<div className="flex items-center gap-3">
-											<img
-												src={
-													user.avatar ||
-													user.avatar_url ||
-													"👲"
-												}
-												alt=""
-												className="w-8 h-8 rounded-full bg-borderMain"
-											/>
+											{(user.avatar || user.avatar_url) &&
+											!failedAvatars[user.id] ? (
+												<img
+													src={
+														user.avatar ||
+														user.avatar_url
+													}
+													alt={
+														user.username ||
+														"avatar"
+													}
+													className="w-8 h-8 rounded-full bg-borderMain object-cover shrink-0"
+													onError={() =>
+														setFailedAvatars(
+															(prev) => ({
+																...prev,
+																[user.id]: true,
+															}),
+														)
+													}
+												/>
+											) : (
+												<div className="w-8 h-8 rounded-full bg-[#202c42] border border-borderMain flex items-center justify-center text-slate-400 shrink-0">
+													<User className="w-4 h-4" />
+												</div>
+											)}
 											<span className="font-semibold text-white">
 												{user.username}
 											</span>
