@@ -18,6 +18,7 @@ function EditProfile() {
 	const [userData, setUserData] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [newUserData, setNewUserData] = useState(null);
+	const [newPassword, setNewPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const { user, logout, fetchWithAuth } = useAuth();
 
@@ -60,21 +61,33 @@ function EditProfile() {
 	const handleSaveChanges = async (event) => {
 		event.preventDefault();
 
-		const response = await fetchWithAuth(`${API_URL}/userEditProfile`, {
-			method: "POST",
-			headers: {
-				"content-type": "application/json",
-			},
-			body: JSON.stringify(newUserData),
-		});
-
-		if (!response.ok) {
-			toast.error("Failed to Save!");
-			return;
+		const payload = {
+			username: newUserData?.username || "",
+		};
+		if (newPassword !== "") {
+			payload.password = newPassword;
 		}
 
-		toast.success("Successfully saved the changes");
-		navigate("/profile");
+		try {
+			const response = await fetchWithAuth(`${API_URL}/userEditProfile`, {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+				},
+				body: JSON.stringify(payload),
+			});
+
+			if (!response.ok) {
+				toast.error("Failed to Save!");
+				return;
+			}
+
+			toast.success("Successfully saved the changes");
+			navigate("/profile");
+		} catch (error) {
+			console.error("Failed to save profile:", error);
+			toast.error("Failed to Save!");
+		}
 	};
 
 	const handleLogout = async () => {
@@ -213,8 +226,8 @@ function EditProfile() {
 									type="email"
 									value={newUserData?.email || ""}
 									placeholder="Enter your email"
-									className="w-full bg-[#0d0f14] border border-slate-700 rounded-lg py-3 pl-11 pr-4 text-white placeholder-slate-500 outline-none focus:border-blue-500 transition"
-									onChange={handleEditFormChange}
+									className="w-full bg-[#0d0f14] border border-slate-700 rounded-lg py-3 pl-11 pr-4 text-slate-400 placeholder-slate-500 outline-none cursor-not-allowed"
+									readOnly
 									name="email"
 								/>
 							</div>
@@ -234,9 +247,12 @@ function EditProfile() {
 
 								<input
 									type={showPassword ? "text" : "password"}
+									value={newPassword}
 									placeholder="Enter your new password"
 									className="w-full bg-[#0d0f14] border border-slate-700 rounded-lg py-3 pl-11 pr-12 text-white placeholder-slate-500 outline-none focus:border-blue-500 transition"
-									onChange={handleEditFormChange}
+									onChange={(e) =>
+										setNewPassword(e.target.value)
+									}
 									name="password"
 									autoComplete="new-password"
 								/>

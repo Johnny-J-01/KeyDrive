@@ -100,11 +100,20 @@ export const userAuthProfileController = async (request, response) => {
 		}
 
 		const data = request.body;
-		const validationResult = userRegisterSchema.safeParse({
-			userName: data.username,
-			userEmail: data.email,
-			userPassword: data.password,
-		});
+		const hasPassword =
+			data.password !== undefined &&
+			data.password !== null &&
+			data.password !== "";
+
+		const validationSchema = hasPassword
+			? userRegisterSchema.pick({ userName: true, userPassword: true })
+			: userRegisterSchema.pick({ userName: true });
+
+		const validationResult = validationSchema.safeParse(
+			hasPassword
+				? { userName: data.username, userPassword: data.password }
+				: { userName: data.username },
+		);
 		if (!validationResult.success) {
 			return response.status(400).json({
 				success: false,
@@ -112,14 +121,20 @@ export const userAuthProfileController = async (request, response) => {
 			});
 		}
 
-		const userHashedPassword = await bcrypt.hash(data.password, 10);
+		const updateFields = {
+			username: validationResult.data.userName,
+		};
+
+		if (hasPassword) {
+			updateFields.password_hash = await bcrypt.hash(
+				validationResult.data.userPassword,
+				10,
+			);
+		}
+
 		const { data: updatedUser, error: updateError } = await supabase
 			.from("users")
-			.update({
-				username: data.username,
-				email: data.email,
-				password_hash: userHashedPassword,
-			})
+			.update(updateFields)
 			.eq("id", userId)
 			.select("id");
 

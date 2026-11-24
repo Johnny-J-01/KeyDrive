@@ -4,6 +4,9 @@ import { resetPasswordTemplate } from '../templates/resetPassword.template.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import supabase from '../model/supabase.js';
+import dotenv from 'dotenv'; 
+
+dotenv.config(); 
 
 export const forgotPasswordController = async (request, response) => {
     try {
@@ -34,7 +37,7 @@ export const forgotPasswordController = async (request, response) => {
         }
 
         const resetToken = generateResetToken(user.id);
-        const resetLink = `http://localhost:5173/reset-password?token=${resetToken}`;
+        const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
 
         try {
             await sendEmail({
