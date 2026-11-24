@@ -13,9 +13,13 @@ const pool = new Pool({
     database: "keydrive",
 })
 
-const client = await pool.connect(); 
-console.log("Connected to Postgres");
-client.release(); 
+try {
+    const client = await pool.connect(); 
+    console.log("Connected to Postgres");
+    client.release(); 
+} catch (error) {
+    console.log("Postgres initial ping failed: ", error.message);
+} 
 
 export default pool; 
 

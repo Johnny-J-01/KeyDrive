@@ -91,10 +91,25 @@ export const userStatsGetController = async (request, response) => {
         const avgWpm = result.rows[0]?.avg_wpm ?? 0;
         const avgAcc = result.rows[0]?.avg_accuracy ?? 0;
 
+        const statsResult = await pool.query(
+            `
+                SELECT races_won, total_races
+                FROM user_stats
+                WHERE user_id = $1;
+            `,
+            [userId]
+        );
+
+        const racesWon = statsResult.rows[0]?.races_won ?? 0;
+        const totalRaces = statsResult.rows[0]?.total_races ?? 0;
+
         const statData = {
             AVG_WPM: avgWpm,
             AVG_Acc: avgAcc,
             total_sessions: result.rows[0]?.total_sessions ?? 0,
+            racesWon: Number(racesWon),
+            races_won: Number(racesWon),
+            totalRaces: Number(totalRaces),
         };
 
         return response.status(200).json({
@@ -179,15 +194,21 @@ export const allUserDataController = async (request, response) => {
                         users.username,
                         users.avatar_url,
                         practice_history.wpm AS max_wpm,
-                        practice_history.accuracy
+                        practice_history.accuracy,
+                        practice_history.started_at AS date,
+                        COALESCE(user_stats.races_won, 0) AS "racesWon",
+                        COALESCE(user_stats.races_won, 0) AS races_won
                     FROM users
                     JOIN practice_history
                         ON users.id = practice_history.user_id
+                    LEFT JOIN user_stats
+                        ON users.id = user_stats.user_id
                     WHERE 1 = 1
                     ${dateCondition}
                     ORDER BY
                         users.id,
-                        practice_history.wpm DESC
+                        practice_history.wpm DESC,
+                        practice_history.started_at DESC
                 ) AS leaderboard
                 ORDER BY max_wpm DESC;
             `
@@ -211,3 +232,69 @@ export const allUserDataController = async (request, response) => {
         });
     }
 }
+
+export const userPerformanceHistoryController = async (request, response) => {
+    try {
+        const userId = request.user?.userId;
+
+        if (!userId) {
+            return response.status(401).json({
+                success: false,
+                message: "Please login to view performance history."
+            });
+        }
+
+        const result = await pool.query(
+            `
+                SELECT *
+                FROM (
+                    SELECT
+                        ph.wpm,
+                        ph.accuracy,
+                        ph.started_at AS timestamp,
+                        'Practice' AS type,
+                        NULL::INT AS placement
+                    FROM practice_history ph
+                    WHERE ph.user_id = $1
+                      AND ph.started_at IS NOT NULL
+
+                    UNION ALL
+
+                    SELECT
+                        rp.wpm,
+                        rp.accuracy,
+                        rp.completed_at AS timestamp,
+                        'Multiplayer Race' AS type,
+                        rp.placement
+                    FROM race_participants rp
+                    JOIN races r ON rp.race_id = r.id
+                    WHERE rp.user_id = $1
+                      AND r.status = 'completed'
+                      AND rp.completed_at IS NOT NULL
+                ) AS performance_history
+                ORDER BY timestamp ASC;
+            `,
+            [userId]
+        );
+
+        const formatted = result.rows.map((row) => ({
+            wpm: Number(row.wpm),
+            accuracy: Number(row.accuracy),
+            timestamp: row.timestamp,
+            date: row.timestamp,
+            type: row.type,
+            placement: row.placement ? Number(row.placement) : null,
+        }));
+
+        return response.status(200).json({
+            message: "Performance history fetched successfully",
+            data: formatted,
+        });
+    }
+    catch (error) {
+        console.error("DATABASE ERROR:", error);
+        return response.status(400).json({
+            error: error.message
+        });
+    }
+};

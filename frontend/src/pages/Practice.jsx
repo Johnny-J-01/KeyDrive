@@ -9,6 +9,96 @@ import { useAuth } from "../main";
 const TIME_MODES = [15, 30, 60, 120];
 const WORD_MODES = [10, 25, 50, 100];
 
+const fallbackWords = mockPassages.flatMap((p) =>
+	p
+		.replace(/[.,;!?]/g, "")
+		.toLowerCase()
+		.split(/\s+/)
+		.filter(Boolean),
+);
+
+function shuffleArray(array) {
+	const copy = [...array];
+	for (let i = copy.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[copy[i], copy[j]] = [copy[j], copy[i]];
+	}
+	return copy;
+}
+
+function generatePassage(
+	pool,
+	selectedMode,
+	currentWordLimit,
+	currentTimeLimit,
+	previousPassage,
+) {
+	if (!pool || pool.length === 0) {
+		return "";
+	}
+
+	const targetCount =
+		selectedMode === "passage"
+			? currentWordLimit
+			: Math.min(Math.max(100, currentTimeLimit * 3), 500);
+
+	let attempts = 0;
+	let result = "";
+
+	while (attempts < 10) {
+		attempts++;
+		let words = [];
+
+		if (pool.length >= targetCount) {
+			const shuffled = shuffleArray(pool);
+			words = shuffled.slice(0, targetCount);
+		} else {
+			while (words.length < targetCount) {
+				const chunk = shuffleArray(pool);
+				words.push(...chunk);
+			}
+			words = words.slice(0, targetCount);
+		}
+
+		result = words.join(" ");
+
+		if (pool.length <= 1 || result !== previousPassage) {
+			break;
+		}
+	}
+
+	return result;
+}
+
+function calculateTypingStats(currentInput, currentPassage, elapsedSeconds) {
+	let correctChars = 0;
+	let errors = 0;
+
+	for (let i = 0; i < currentInput.length; i++) {
+		if (currentInput[i] === currentPassage[i]) {
+			correctChars++;
+		} else {
+			errors++;
+		}
+	}
+
+	const minutes = Math.max(1, elapsedSeconds) / 60;
+	const wordsTyped = correctChars / 5;
+	const wpm = elapsedSeconds > 0 ? Math.round(wordsTyped / minutes) : 0;
+
+	const accuracy =
+		currentInput.length > 0
+			? Math.round((correctChars / currentInput.length) * 100)
+			: 0;
+
+	return {
+		wpm,
+		accuracy,
+		errors,
+		chars: currentInput.length,
+	};
+}
+
 export default function Practice() {
 	const [mode, setMode] = useState("time");
 	const [timeLimit, setTimeLimit] = useState(30);
@@ -24,8 +114,10 @@ export default function Practice() {
 	const inputRef = useRef(null);
 	const inputValueRef = useRef("");
 	const startTimeRef = useRef(null);
+	const passageRef = useRef("");
+	const previousPassageRef = useRef("");
 	const [userPersonalData, setUserPersonalData] = useState(null);
-	const [passageWordData, setPassageWordData] = useState(null);
+	const [wordsPool, setWordsPool] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [guestNotice, setGuestNotice] = useState("");
 	const { accessToken, fetchWithAuth } = useAuth();
@@ -72,14 +164,23 @@ export default function Practice() {
 				);
 				if (!response.ok) {
 					toast.error("Unable to fetch the words!!");
+					setWordsPool(fallbackWords);
 					return;
 				}
 
 				const wordsData = await response.json();
-				setPassageWordData(wordsData.text);
+				const pool =
+					Array.isArray(wordsData.words) && wordsData.words.length > 0
+						? wordsData.words
+						: wordsData.text
+							? wordsData.text.split(" ").filter(Boolean)
+							: fallbackWords;
+
+				setWordsPool(pool.length > 0 ? pool : fallbackWords);
 			} catch (error) {
 				console.error("Failed to fetch words:", error);
 				toast.error("Unable to fetch the words!!");
+				setWordsPool(fallbackWords);
 			} finally {
 				setIsLoading(false);
 			}
@@ -87,49 +188,161 @@ export default function Practice() {
 		fetchTestWords();
 	}, [fetchWithAuth]);
 
-	// Initialize test
+	const postUserData = useCallback(
+		async (userData) => {
+			const response = await fetchWithAuth(
+				"http://localhost:3000/stats",
+				{
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+					},
+					body: JSON.stringify(userData),
+				},
+			);
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				console.error("STATS API ERROR:", errorData);
+				return;
+			}
+
+			const data = await response.json();
+			console.log("Response user Stat data: ", data);
+		},
+		[fetchWithAuth],
+	);
+
+	const finishTest = useCallback(
+		(finalInput, finalStartTime) => {
+			const currentStartTime =
+				finalStartTime || startTimeRef.current || startTime;
+			if (!currentStartTime || isFinished) return;
+
+			setIsFinished(true);
+
+			const currentInput =
+				finalInput !== undefined
+					? finalInput
+					: (inputRef.current?.value ?? "");
+
+			const currentPassage = passageRef.current || passage;
+
+			const elapsed =
+				mode === "time"
+					? timeLimit
+					: Math.max(
+							1,
+							Math.floor((Date.now() - currentStartTime) / 1000),
+						);
+
+			const finalStats = calculateTypingStats(
+				currentInput,
+				currentPassage,
+				elapsed,
+			);
+
+			if (!userPersonalData || !accessToken) {
+				setGuestNotice(
+					"Guest account — please login to save your results.",
+				);
+				setStats(finalStats);
+				return;
+			}
+
+			const userTestData = {
+				user_id: userPersonalData.id,
+				mode: mode,
+				word_count: wordLimit,
+				duration_seconds: elapsed,
+				wpm: finalStats.wpm,
+				accuracy: finalStats.accuracy,
+				errors: finalStats.errors,
+				started_at: new Date(currentStartTime).toISOString(),
+			};
+
+			postUserData(userTestData);
+			setStats(finalStats);
+		},
+		[
+			startTime,
+			isFinished,
+			mode,
+			timeLimit,
+			wordLimit,
+			passage,
+			userPersonalData,
+			accessToken,
+			postUserData,
+		],
+	);
+
+	const resetTest = useCallback(() => {
+		const pool = wordsPool.length > 0 ? wordsPool : fallbackWords;
+		if (!pool || pool.length === 0) return;
+
+		const nextPassage = generatePassage(
+			pool,
+			mode,
+			wordLimit,
+			timeLimit,
+			previousPassageRef.current,
+		);
+
+		previousPassageRef.current = nextPassage;
+		passageRef.current = nextPassage;
+		setPassage(nextPassage);
+		setInput("");
+		setStartTime(null);
+		startTimeRef.current = null;
+		setTimeLeft(timeLimit);
+		setIsFinished(false);
+		setStats({ wpm: 0, accuracy: 0, errors: 0, chars: 0 });
+
+		if (inputRef.current) {
+			inputRef.current.value = "";
+			inputRef.current.focus();
+		}
+	}, [wordsPool, mode, wordLimit, timeLimit]);
+
 	useEffect(() => {
-		if (!passageWordData) return;
-		resetTest();
-	}, [passageWordData, mode, timeLimit, wordLimit]);
-
-	// Timer logic
-	// useEffect(() => {
-	// 	if (!startTime || isFinished || mode !== "time") return;
-
-	// 	const interval = setInterval(() => {
-	// 		const elapsed = Math.floor((Date.now() - startTime) / 1000);
-	// 		const remaining = timeLimit - elapsed;
-
-	// 		if (remaining <= 0) {
-	// 			clearInterval(interval);
-	// 			finishTest();
-	// 		} else {
-	// 			setTimeLeft(remaining);
-	// 		}
-	// 	}, 1000);
-
-	// 	return () => clearInterval(interval);
-	// }, [startTime, isFinished, mode, timeLimit, finishTest]);
+		if (wordsPool.length === 0 && !isLoading) {
+			resetTest();
+		} else if (wordsPool.length > 0) {
+			resetTest();
+		}
+	}, [wordsPool, mode, timeLimit, wordLimit, resetTest, isLoading]);
 
 	useEffect(() => {
-		if (startTime && !isFinished && mode === "time") {
-			const interval = setInterval(() => {
-				const elapsed = Math.floor((Date.now() - startTime) / 1000);
+		if (!startTime || isFinished) return;
 
+		const interval = setInterval(() => {
+			const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
+			if (mode === "time") {
 				const remaining = timeLimit - elapsed;
-
 				if (remaining <= 0) {
 					clearInterval(interval);
 					finishTest();
-				} else {
-					setTimeLeft(remaining);
+					return;
 				}
-			}, 1000);
+				setTimeLeft(remaining);
+			}
 
-			return () => clearInterval(interval);
-		}
-	}, [startTime, isFinished, mode, timeLimit]);
+			const currentInput = inputRef.current?.value ?? "";
+			if (currentInput.length > 0) {
+				const currentPassage = passageRef.current || passage;
+				const currentStats = calculateTypingStats(
+					currentInput,
+					currentPassage,
+					elapsed,
+				);
+				setStats(currentStats);
+			}
+		}, 1000);
+
+		return () => clearInterval(interval);
+	}, [startTime, isFinished, mode, timeLimit, passage, finishTest]);
 
 	useEffect(() => {
 		const handleKeyDown = (event) => {
@@ -140,141 +353,37 @@ export default function Practice() {
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [passageWordData, mode, timeLimit, wordLimit]);
-
-	const resetTest = () => {
-		// Pick a random passage
-		if (!passageWordData) return;
-		let text = passageWordData;
-		if (mode === "passage") {
-			text = text.split(" ").slice(0, wordLimit).join(" ");
-		}
-		setPassage(text);
-		setInput("");
-		setStartTime(null);
-		setTimeLeft(timeLimit);
-		setIsFinished(false);
-		setStats({ wpm: 0, accuracy: 0, errors: 0 });
-		if (inputRef.current) inputRef.current.focus();
-	};
-
-	const postUserData = async (userData) => {
-		const response = await fetchWithAuth("http://localhost:3000/stats", {
-			method: "POST",
-			headers: {
-				"content-type": "application/json",
-			},
-			body: JSON.stringify(userData),
-		});
-
-		if (!response.ok) {
-			const errorData = await response.json();
-			console.error("STATS API ERROR:", errorData);
-			return;
-		}
-
-		const data = await response.json();
-		console.log("Response user Stat data: ", data);
-	};
-
-	const finishTest = () => {
-		if (!startTime || isFinished) return;
-
-		// Get the latest value directly from the input element
-		const currentInput = inputRef.current?.value ?? "";
-
-		setIsFinished(true);
-
-		const elapsed =
-			mode === "time"
-				? timeLimit
-				: Math.max(1, Math.floor((Date.now() - startTime) / 1000));
-
-		const minutes = elapsed / 60;
-
-		// Calculate stats
-		let correctChars = 0;
-		let errors = 0;
-
-		for (let i = 0; i < currentInput.length; i++) {
-			if (currentInput[i] === passage[i]) {
-				correctChars++;
-			} else {
-				errors++;
-			}
-		}
-
-		const wordsTyped = correctChars / 5;
-		const wpm = Math.round(wordsTyped / minutes);
-
-		const accuracy =
-			currentInput.length > 0
-				? Math.round((correctChars / currentInput.length) * 100)
-				: 0;
-
-		if (!userPersonalData || !accessToken) {
-			setGuestNotice(
-				"Guest account — please login to save your results.",
-			);
-			setStats({
-				wpm,
-				accuracy,
-				errors,
-				chars: currentInput.length,
-			});
-			return;
-		}
-
-		const userTestData = {
-			user_id: userPersonalData.id,
-			mode: mode,
-			word_count: wordLimit,
-			duration_seconds: elapsed,
-			wpm: wpm,
-			accuracy: accuracy,
-			errors: errors,
-			started_at: new Date(startTime).toISOString(),
-		};
-
-		postUserData(userTestData);
-
-		setStats({
-			wpm,
-			accuracy,
-			errors,
-			chars: currentInput.length,
-		});
-	};
-
-	// const handleInput = (e) => {
-	// 	if (isFinished) return;
-	// 	if (!startTime) {
-	// 		setStartTime(Date.now());
-	// 	}
-	// 	const val = e.target.value;
-
-	// 	if (val.length <= passage.length) {
-	// 		setInput(val);
-	// 		if (mode === "passage" && val.length === passage.length) {
-	// 			finishTest();
-	// 		}
-	// 	}
-	// };
+	}, [resetTest]);
 
 	const handleInput = (e) => {
 		if (isFinished) return;
 
-		if (!startTime) {
-			setStartTime(Date.now());
+		let currentStartTime = startTimeRef.current;
+		if (!currentStartTime) {
+			currentStartTime = Date.now();
+			startTimeRef.current = currentStartTime;
+			setStartTime(currentStartTime);
 		}
 
 		const val = e.target.value;
+		const currentPassage = passageRef.current || passage;
 
-		if (val.length <= passage.length) {
+		if (val.length <= currentPassage.length) {
 			setInput(val);
 
-			if (mode === "passage" && val.length === passage.length) {
-				finishTest();
+			const elapsedSeconds = Math.max(
+				1,
+				(Date.now() - currentStartTime) / 1000,
+			);
+			const liveStats = calculateTypingStats(
+				val,
+				currentPassage,
+				elapsedSeconds,
+			);
+			setStats(liveStats);
+
+			if (mode === "passage" && val.length === currentPassage.length) {
+				finishTest(val, currentStartTime);
 			}
 		}
 	};
@@ -384,8 +493,22 @@ export default function Practice() {
 						<span>
 							{mode === "time"
 								? timeLeft
-								: `${input.split(" ").length}/${wordLimit}`}
+								: `${input.trim().length === 0 ? 0 : input.trim().split(/\s+/).length}/${wordLimit}`}
 						</span>
+						<div className="flex items-center gap-6 text-lg font-mono">
+							<span className="text-textMuted">
+								<span className="text-primary font-bold">
+									{stats.wpm}
+								</span>{" "}
+								Wpm
+							</span>
+							<span className="text-textMuted">
+								<span className="text-primary font-bold">
+									{stats.accuracy}%
+								</span>{" "}
+								Acc
+							</span>
+						</div>
 					</div>
 					<PassageViewport
 						passage={passage}

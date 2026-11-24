@@ -6,6 +6,17 @@ import { useAuth } from "../main";
 
 const FILTERS = ["Daily", "Weekly", "Monthly", "All Time"];
 
+const formatDate = (dateValue) => {
+	if (!dateValue) return "-";
+	const parsed = new Date(dateValue);
+	if (isNaN(parsed.getTime())) return "-";
+	return parsed.toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	});
+};
+
 export default function Leaderboard() {
 	const [activeFilter, setActiveFilter] = useState("All Time");
 	const [search, setSearch] = useState("");
@@ -141,6 +152,9 @@ export default function Leaderboard() {
 									Accuracy
 								</th>
 								<th className="px-6 py-4 text-sm font-semibold text-textMuted text-right">
+									Date
+								</th>
+								<th className="px-6 py-4 text-sm font-semibold text-textMuted text-right">
 									Races Won
 								</th>
 							</tr>
@@ -170,7 +184,7 @@ export default function Leaderboard() {
 									<td className="px-6 py-4">
 										<div className="flex items-center gap-3">
 											<img
-												src={user.avatar}
+												src={user.avatar || user.avatar_url || "👲"}
 												alt=""
 												className="w-8 h-8 rounded-full bg-borderMain"
 											/>
@@ -185,15 +199,18 @@ export default function Leaderboard() {
 									<td className="px-6 py-4 text-right font-mono text-textMuted">
 										{user.accuracy}%
 									</td>
+									<td className="px-6 py-4 text-right font-mono text-textMuted text-sm">
+										{formatDate(user.date)}
+									</td>
 									<td className="px-6 py-4 text-right font-mono text-textMuted">
-										{user.racesWon}
+										{user.racesWon ?? user.races_won ?? 0}
 									</td>
 								</tr>
 							))}
 							{filteredUsers.length === 0 && (
 								<tr>
 									<td
-										colSpan="5"
+										colSpan="6"
 										className="px-6 py-12 text-center text-textMuted"
 									>
 										No players found matching "{search}"
